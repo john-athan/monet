@@ -27,6 +27,16 @@ that day; days with only files are days too. `files=0` leaves them out; favourit
 band counts them. The client lays a file out as a tile in the same rows (a page upright, slides lying, books 2:3,
 records square) and opens it in the file viewer.
 
+Every kind of file has the same timeline on its own page (Dokumente, Tabellen, Präsentationen, Bücher, Audio):
+`kind=<doc|sheet|slides|book|audio|other>` gives only files of that kind and no photos, `GET /api/band?kind=` their
+band. With `q=` as well, only files whose title or text match (versions inside a stack too); the page's search box
+uses it, so a search keeps the timeline. On the desktop the band stands under the header on every page that has one.
+
+`POST /api/search` with `days: true` sorts by date and lays the page out as `days` (`TimelineDay[]`): its photos, and
+the files found whose day lies between this page's oldest day and the previous page's, so paging by `offset` never
+splits a day out of order. The first page also has `band`, over all hits and files. The search page shows "Nach
+Datum" this way, with the band; "Beste Treffer" stays the ranked grid with the files in a row above it.
+
 ## Stacks
 
 Files that are versions or siblings of each other and were made in the same few days are one stack

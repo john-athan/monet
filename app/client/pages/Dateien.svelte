@@ -25,7 +25,7 @@
   let cur = $state(base);
   const s = $derived(cur.tl);
   const key = $derived(`kind=${kind}${shownQ ? `&q=${encodeURIComponent(shownQ)}` : ""}`);
-  const unit = $derived(kind === "audio" ? "Titel" : kind === "book" ? "Bücher" : "Dateien");
+  const unit = $derived<[string, string]>(kind === "audio" ? ["Titel", "Titel"] : kind === "book" ? ["Buch", "Bücher"] : ["Datei", "Dateien"]);
   // typing waits a moment, so a word is not searched letter by letter
   $effect(() => {
     const v = q.trim();
@@ -33,7 +33,7 @@
     const t = setTimeout(() => {
       shownQ = v; cur = v ? makeTimeline(`kind=${kind}&q=${encodeURIComponent(v)}`) : base;
       if (!cur.tl.loaded) cur.loadMore(16);
-      loadBand(key, unit); scrollTo({ top: 0, behavior: "auto" });
+      loadBand(key, unit, `var(${k.room})`); scrollTo({ top: 0, behavior: "auto" });
     }, 250);
     return () => clearTimeout(t);
   });
@@ -45,11 +45,11 @@
   const onpos = (date: string) => { band.current = date.slice(0, 7); };
   onMount(() => {
     if (!base.tl.loaded) base.loadMore(16).then(() => base.loadMore(24));
-    if (!band.loaded || band.key !== key) loadBand(key, unit);
+    if (!band.loaded || band.key !== key) loadBand(key, unit, `var(${k.room})`);
     band.jump = jumpTo;
     return () => { if (band.jump === jumpTo) band.jump = null; };
   });
-  onUploaded(() => { cur.refresh(); loadBand(key, unit); });
+  onUploaded(() => { cur.refresh(); loadBand(key, unit, `var(${k.room})`); });
   const total = $derived(band.key === key ? band.months.reduce((n, m) => n + m.n, 0) : 0);
   const empty = $derived(`Noch ${NONE[kind]}. ${app.wide ? `Ziehe ${DROP[kind] ?? "Dateien"} in das Fenster oder wähle` : "Wähle"} „Importieren“.`);
 </script>

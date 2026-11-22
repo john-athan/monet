@@ -66,7 +66,7 @@
     out = r;
     if (!r.days) return;
     days = r.days; more = r.items.length < r.total;
-    setBand(`suche:${seq}`, r.band ?? [], "Treffer");
+    setBand(`suche:${seq}`, r.band ?? [], ["Treffer", "Treffer"]);
   }
   let lastVec: string | undefined;
   onMount(() => { loadPeople(); });
@@ -159,7 +159,7 @@
     {/if}
     <section aria-label="Treffer">
       <div class="top">
-        <h2 class="tnum">{count(out.total, "Foto", "Fotos")}</h2>
+        <h2 class="tnum">{asDays ? count(out.total + (out.docs?.length ?? 0), "Treffer", "Treffer") : count(out.total, "Foto", "Fotos")}</h2>
         <div role="group" aria-label="Sortierung" class="sort">
           <button type="button" aria-pressed={sort === "best"} onclick={() => setSort("best")}>Beste Treffer</button>
           <button type="button" aria-pressed={sort === "date"} onclick={() => setSort("date")}>Nach Datum</button>

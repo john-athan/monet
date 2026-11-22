@@ -16,6 +16,6 @@ export function embed(text: string): Promise<string> {
 }
 
 /** Searches with the given chips; `vec` is the embedded content chip, if there is one yet. */
-export const searchChips = (chips: Chip[], sort: "best" | "date", limit = 120, everyone = false, vec?: string) =>
-  post<SearchOut>("/api/search", { chips, vec, sort, limit, everyone });
+export const searchChips = (chips: Chip[], sort: "best" | "date", limit = 120, everyone = false, vec?: string, offset = 0, days = false) =>
+  post<SearchOut>("/api/search", { chips, vec, sort, limit, everyone, offset, days });
 export const parseText = (q: string, everyone = false) => post<ParseOut>("/api/search/parse", { q, everyone });

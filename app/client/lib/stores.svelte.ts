@@ -53,9 +53,10 @@ export const kindTimeline = (kind: string) => kinds.get(kind) ?? kinds.set(kind,
 
 /** The band of the page on screen: `key` says whose ("" the photos, else the query of a file timeline), `jump` is set
  *  while a timeline page is there to jump in (the desktop shows the band then). */
-export const band = $state({ months: [] as Band["months"], loaded: false, current: "", key: "", unit: "Fotos", jump: null as null | ((ym: string) => void) });
-export async function loadBand(key = "", unit = "Fotos") {
-  band.unit = unit;
+export const band = $state({ months: [] as Band["months"], loaded: false, current: "", key: "", unit: ["Foto", "Fotos"] as [string, string], paint: "var(--water)", jump: null as null | ((ym: string) => void) });
+/** `paint`: the colour of months that hold only files (they have no photo colours) */
+export async function loadBand(key = "", unit: [string, string] = ["Foto", "Fotos"], paint = "var(--water)") {
+  band.unit = unit; band.paint = paint;
   const g = gen;
   if (band.key !== key) { band.key = key; band.months = []; band.loaded = false; band.current = ""; }
   try { const m = (await api<Band>(`/api/band${key ? "?" + key : ""}`)).months; if (g === gen && band.key === key) { band.months = m; band.loaded = true; } } catch {}
@@ -75,7 +76,7 @@ export function jumper(o: { days: () => { date: string }[]; more: () => Promise<
   };
 }
 /** A band that is already known (a search brings its own). */
-export function setBand(key: string, months: Band["months"], unit: string) { band.key = key; band.unit = unit; band.months = months; band.loaded = true; }
+export function setBand(key: string, months: Band["months"], unit: [string, string]) { band.key = key; band.unit = unit; band.paint = "var(--water)"; band.months = months; band.loaded = true; }
 
 export const status = $state({ s: null as Status | null });
 export async function loadStatus() { try { status.s = await api<Status>("/api/status"); } catch {} }

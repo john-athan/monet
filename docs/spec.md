@@ -145,7 +145,7 @@ PUT  /api/upload/:sha256?offset=&total=&name=&mtime=&source=   body = bytes, chu
 POST /api/items/:id/sidecar {takenAt?, lat?, lon?, albums?}  (Takeout import)
 
 GET  /api/timeline?cursor=&limit=  -> {days:[{date, title, place, sign, items:[ItemSummary]}], next}
-GET  /api/band -> {months:[{ym:'2019-12', n, colors:['#..' x3]}]}
+GET  /api/band?kind=&q= -> {months:[{ym:'2019-12', n, colors:['#..' x3]}]}  (kind, q: one kind of file, app/docs/together.md)
 GET  /api/items/:id -> ItemDetail ; PATCH /api/items/:id {favorite} ; DELETE /api/items/:id
 GET  /media/:id/:size(s|m|l|o)  (devices: s,m with scope index or upload; l with index; o with export) (ETag = sha256-size, Cache-Control private, max-age=31536000, immutable)
 GET  /media/face/:faceId        (square crop with margin, 256 px, from the l thumbnail)

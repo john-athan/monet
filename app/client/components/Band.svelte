@@ -5,9 +5,10 @@
   import { fillMonths, dabs, forest, clouds, years } from "../lib/band";
   import { theme } from "../lib/state.svelte";
   import { technique } from "../lib/theme";
-  import { monthShort, num } from "../lib/format";
+  import { monthShort, count } from "../lib/format";
   let { vertical }: { vertical: boolean } = $props();
-  const filled = $derived(fillMonths(band.months, vertical));
+  // a month of files only has no photo colours: it is painted in the colour of the page
+  const filled = $derived(fillMonths(band.months.map(m => m.colors.length ? m : { ...m, colors: [band.paint] }), vertical));
   // the months in the style's band technique (shared/styles.ts): dabs, a forest wall of trunks, clouds in a day sky
   const kind = $derived(technique(theme()).band);
   const paint = $derived(kind === "dabs" ? dabs(filled, vertical) : []);
@@ -82,7 +83,7 @@
     <div class="years tnum" aria-hidden="true">
       {#each labels as y}<span style="flex:{y.n} 1 0">{y.y}</span>{/each}
     </div>
-    {#if month}<p class="sr" aria-live="polite">{monthShort(month.ym)}, {num(month.n)} {band.unit}</p>{/if}
+    {#if month}<p class="sr" aria-live="polite">{monthShort(month.ym)}, {count(month.n, ...band.unit)}</p>{/if}
   </section>
 {/if}
 
