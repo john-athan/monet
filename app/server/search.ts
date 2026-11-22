@@ -6,8 +6,8 @@ import { COLS_DOC_SUMMARY, DOC_TOP, ftsMatch, summary as docSummary } from "./do
 import { semanticDocs } from "./docvec";
 import { reindexFts } from "./fts";
 import { parseQuery, SEASON_MONTHS, type ParseCtx } from "./parse";
-import { SHOWN, SUM_COLS, summary } from "./library";
-import { blobVec, decodeVec, dot, HttpError, vecBlob } from "./util";
+import { bandOf, daysOf, SHOWN, SUM_COLS, summary } from "./library";
+import { blobVec, decodeVec, dot, HttpError, localDay, vecBlob } from "./util";
 import type { Chip, DocSummary, IndexIn, ItemSummary, ParseOut, SearchIn, SearchOut } from "../shared/types";
 
 export const CLIP_MODEL = "siglip2-b32-256";
@@ -267,6 +267,33 @@ function rank(owners: number[], chips: Chip[], vec: Float32Array | null, sort: "
   return kept.sort(sort === "date" ? (a, b) => b.taken_at - a.taken_at || b.id - a.id : (a, b) => score(b) - score(a) || b.taken_at - a.taken_at);
 }
 
+/** One page of date-sorted hits as timeline days (docs/together.md, "Search"): its photos, and the files whose day lies
+ *  between this page's oldest day and the previous page's, so a day is never split out of order. The first page also
+ *  carries the band over all hits and files. */
+function asDays(owners: number[], hits: Hit[], offset: number, limit: number, docs: DocSummary[], viewer: number): Pick<SearchOut, "days" | "band"> {
+  const ids = hits.slice(offset, offset + limit).map(h => h.id);
+  const rows = (ids.length ? db.query(`SELECT ${SUM_COLS}, i.owner_id, p.name AS place_name FROM item i LEFT JOIN place p ON p.id = i.place_id
+    WHERE i.id IN (SELECT value FROM json_each(?)) ORDER BY i.taken_at DESC, i.id DESC`).all(JSON.stringify(ids)) : []) as any[];
+  const dayOf = (id: number) => (db.query("SELECT day FROM item WHERE id = ?").get(id) as { day: string } | null)?.day ?? "";
+  const upper = offset > 0 && hits[offset - 1] ? dayOf(hits[offset - 1].id) : "9999";
+  const lower = offset + limit < hits.length ? rows.at(-1)?.day ?? "" : "";
+  const dd = docs.length ? db.query(`SELECT id, day FROM doc WHERE id IN (SELECT value FROM json_each(?))`).all(JSON.stringify(docs.map(d => d.id))) as { id: number; day: string | null }[] : [];
+  const docDay = new Map(dd.map(r => [r.id, r.day]));
+  const placed = docs.map(d => ({ d, day: docDay.get(d.id) ?? localDay(d.takenAt, null) }));
+  const docsByDay = new Map<string, DocSummary[]>();
+  for (const { d, day } of placed) if (day < upper && day >= lower) (docsByDay.get(day) ?? docsByDay.set(day, []).get(day)!).push(d);
+  for (const ds of docsByDay.values()) ds.sort((a, b) => b.takenAt - a.takenAt || b.id - a.id);
+  const dates = [...new Set([...rows.map(r => r.day as string), ...docsByDay.keys()])].sort().reverse();
+  const out: Pick<SearchOut, "days" | "band"> = { days: daysOf(dates, rows, docsByDay, r => r.owner_id === viewer ? summary(r) : { ...summary(r), owner: r.owner_id }) };
+  if (!offset) {
+    const all = hits.length ? db.query(`SELECT substr(i.day, 1, 7) AS ym, i.color, i.colors FROM item i WHERE i.id IN (SELECT value FROM json_each(?))`).all(JSON.stringify(hits.map(h => h.id))) as any[] : [];
+    const dm = new Map<string, number>();
+    for (const { day } of placed) dm.set(day.slice(0, 7), (dm.get(day.slice(0, 7)) ?? 0) + 1);
+    out.band = bandOf(all, [...dm].map(([ym, n]) => ({ ym, n }))).months;
+  }
+  return out;
+}
+
 /** Photos from another library than the one being looked at say whose they are. */
 function summaries(owners: number[], ids: number[], viewer: number): ItemSummary[] {
   if (!ids.length) return [];
@@ -282,10 +309,13 @@ export function search(owners: number | number[], b: SearchIn, viewer?: number):
   const chips = (Array.isArray(b.chips) ? b.chips : []).filter(c => c && typeof c.value === "string" && ["person", "date", "place", "content", "text"].includes(c.kind)).slice(0, 12);
   const vec = b.vec ? decodeVec(b.vec, DIM) : null;
   if (b.vec && !vec) throw new HttpError(400, "Der Suchvektor ist ungültig.");
-  const sort = b.sort === "date" ? "date" : "best";
+  // as days the hits come newest first, like the timeline they are laid out in
+  const sort = b.days || b.sort === "date" ? "date" : "best";
   const hits = rank(os, chips, vec, sort);
   const limit = Math.max(1, Math.min(1000, Math.floor(b.limit ?? 400))), offset = Math.max(0, Math.floor(b.offset ?? 0));
-  const out: SearchOut = { total: hits.length, items: summaries(os, hits.slice(offset, offset + limit).map(h => h.id), view), relaxed: null, docs: offset ? [] : findDocs(os, chips, vec, view) };
+  const docs = offset && !b.days ? [] : findDocs(os, chips, vec, view);
+  const out: SearchOut = { total: hits.length, items: summaries(os, hits.slice(offset, offset + limit).map(h => h.id), view), relaxed: null, docs: offset ? [] : docs };
+  if (b.days) Object.assign(out, asDays(os, hits, offset, limit, docs, view));
 
   // relaxed: drop the most restrictive person (the one with the fewest photos on its own) and say what that would show
   const persons = chips.filter(c => c.kind === "person");

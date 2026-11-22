@@ -2,10 +2,11 @@
   // A spreadsheet as a virtual grid: only the rows and columns on screen exist as elements, and only the windows of rows
   // the screen needs are fetched. Column letters and row numbers stay put while the cells scroll under them.
   import { SvelteMap } from "svelte/reactivity";
-  import type { DocDetail, SheetRows } from "../../shared/types";
+  import type { DocDetail, FindHit, SheetRows } from "../../shared/types";
   import { api } from "../lib/api";
   import { num } from "../lib/format";
-  let { detail }: { detail: DocDetail } = $props();
+  // marks: the cells the viewer's search found; focus: the current one, scrolled to (docs/together.md)
+  let { detail, marks = [], focus = null }: { detail: DocDetail; marks?: FindHit[]; focus?: FindHit | null } = $props();
 
   const ROW = 28, HEAD = 28, ROWW = 56, WIN = 200, OVER = 6, MAXWIN = 40, PAR = 3;
   let cur = $state(0);
@@ -102,6 +103,14 @@
     sc?.scrollTo(0, 0);
   }
   function retry() { failed = false; pump(); }
+  const hitKeys = $derived(new Set(marks.flatMap(h => ("sheet" in h && h.sheet === cur ? [`${h.row}:${h.col}`] : []))));
+  const onKey = $derived(focus && "sheet" in focus && focus.sheet === cur ? `${focus.row}:${focus.col}` : "");
+  $effect(() => {
+    if (!focus || !("sheet" in focus)) return;
+    const f = focus;
+    if (f.sheet !== cur) pick(f.sheet);
+    requestAnimationFrame(() => sc?.scrollTo({ top: Math.max(0, HEAD + f.row * ROW - vh / 3), left: Math.max(0, colX[f.col] ?? 0) - 40 }));
+  });
 </script>
 
 <div class="sheetview">
@@ -125,7 +134,7 @@
           <div class="r" style:top="{HEAD + r * ROW}px" style:left="{ROWW + colX[colList[0] ?? 0]}px">
             {#each colList as c (c)}
               {@const v = data?.[c] ?? ""}
-              <span class="c" class:num={v !== "" && isNum(v)} style:width="{colW[c]}px" title={v || undefined}>{v}</span>
+              <span class="c" class:num={v !== "" && isNum(v)} class:hit={hitKeys.has(`${r}:${c}`)} class:on={onKey === `${r}:${c}`} style:width="{colW[c]}px" title={v || undefined}>{v}</span>
             {/each}
           </div>
         {/each}
@@ -162,6 +171,8 @@
   .r { position: absolute; display: flex; height: 28px; }
   .c { flex: none; display: block; height: 100%; padding: 0 8px; line-height: 27px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); box-sizing: border-box; }
   .c.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .c.hit { background: rgb(255 214 0 / .3); }
+  .c.on { background: rgb(255 140 0 / .45); box-shadow: inset 0 0 0 2px rgb(224 104 0); }
   .empty { padding: 28px 18px; color: var(--muted); }
   .foot { flex: none; display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 8px calc(env(safe-area-inset-bottom)) 8px; border-top: 1px solid var(--rule); background: var(--surface); }
   .tabs { flex: 1; min-width: 0; display: flex; gap: 4px; overflow-x: auto; padding: 4px 0; }

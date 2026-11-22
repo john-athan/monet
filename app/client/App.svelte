@@ -25,8 +25,6 @@
   import Ablage from "./pages/Ablage.svelte";
   import Dateien from "./pages/Dateien.svelte";
   import Datei from "./pages/Datei.svelte";
-  import Buecher from "./pages/Buecher.svelte";
-  import AudioList from "./pages/Audio.svelte";
   import Momente from "./pages/Momente.svelte";
   import Moment from "./pages/Moment.svelte";
 
@@ -144,8 +142,8 @@
     {:else if route.name === "dokumente"}<Dateien kind="doc" />
     {:else if route.name === "tabellen"}<Dateien kind="sheet" />
     {:else if route.name === "praesentationen"}<Dateien kind="slides" />
-    {:else if route.name === "buecher"}<Buecher />
-    {:else if route.name === "audio"}<AudioList />
+    {:else if route.name === "buecher"}<Dateien kind="book" />
+    {:else if route.name === "audio"}<Dateien kind="audio" />
     {:else if route.name === "datei"}{#key route.id}<Datei id={route.id!} />{/key}{/if}
     {/key}
   </Shell>

@@ -2,9 +2,11 @@
   // A presentation: the current slide large, all slides as a strip below. Keys and swipe change the slide, the number
   // lives in the URL hash (#3) so a reload keeps the place. No transitions, no autoplay.
   import { SvelteSet } from "svelte/reactivity";
-  import type { DocDetail } from "../../shared/types";
+  import type { DocDetail, FindHit } from "../../shared/types";
   import Icon from "./Icon.svelte";
-  let { detail }: { detail: DocDetail } = $props();
+  import PageText from "./PageText.svelte";
+  // marks: the hits of the viewer's search; focus: the current one, its slide is shown (docs/together.md)
+  let { detail, marks = [], focus = null }: { detail: DocDetail; marks?: FindHit[]; focus?: FindHit | null } = $props();
 
   const count = $derived(Math.max(1, detail.pages ?? 1));
   const ratio = $derived(detail.w > 0 && detail.h > 0 ? detail.w / detail.h : 16 / 9);
@@ -18,6 +20,8 @@
     cur = n;
     history.replaceState(history.state, "", `${location.pathname}${location.search}#${n}`);
   }
+  $effect(() => { if (focus && "page" in focus) show(focus.page); });
+  const here = $derived(marks.flatMap(h => ("page" in h && h.page === cur ? [h.boxes] : [])));
   // keep the hash in step when a reload landed on a slide that does not exist
   $effect(() => { if (cur > count) show(count); });
 
@@ -64,7 +68,8 @@
 
 <div class="slides" style:--r={ratio}>
   <div class="stage" role="presentation" onpointerdown={down} onpointerup={up}>
-    <img class="slide" src="/media/doc/{detail.id}/p/{cur}" alt="Folie {cur} von {count}" decoding="async" draggable="false" />
+    <div class="frame"><img class="slide" src="/media/doc/{detail.id}/p/{cur}" alt="Folie {cur} von {count}" decoding="async" draggable="false" />
+      {#key cur}<PageText doc={detail.id} n={cur} {ratio} marks={here} focus={focus && "page" in focus && focus.page === cur ? focus.boxes : null} />{/key}</div>
     {#if cur > 1}<button type="button" class="nav l" aria-label="Vorherige Folie" onclick={() => show(cur - 1)}><Icon name="back" size={22} sw={2} /></button>{/if}
     {#if cur < count}<button type="button" class="nav r" aria-label="Nächste Folie" onclick={() => show(cur + 1)}><Icon name="chevron" size={22} sw={2} /></button>{/if}
   </div>
@@ -83,6 +88,7 @@
 <style>
   .slides { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .stage { position: relative; flex: 1; min-height: 0; container-type: size; display: grid; place-items: center; padding: 12px; touch-action: pan-y; }
+  .frame { position: relative; border-radius: 6px; overflow: hidden; }
   .slide { display: block; width: min(100cqw, 100cqh * var(--r)); aspect-ratio: var(--r); object-fit: contain; background: var(--surface-2); border-radius: 6px; box-shadow: 0 1px 2px rgb(0 0 0 / .14), 0 8px 26px rgb(0 0 0 / .12); user-select: none; }
   .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 0; border-radius: 50%; display: none; place-items: center; background: var(--glass); color: var(--ink); box-shadow: var(--shadow); }
   .nav:hover { background: var(--surface-2); } .nav.l { left: 14px; } .nav.r { right: 14px; }

@@ -238,9 +238,9 @@ route("POST", "/api/items/(\\d+)/sidecar", async c => {
 /* ---------- library ---------- */
 route("GET", "/api/timeline", c => {
   const q = c.url.searchParams;
-  return J(lib.timeline(lib_(c), { cursor: q.get("cursor"), from: q.get("from"), limit: Number(q.get("limit") ?? 24), favorite: q.get("favorite") === "1", album: q.get("album") ? Number(q.get("album")) : null, files: q.get("files") !== "0" }));
+  return J(lib.timeline(lib_(c), { cursor: q.get("cursor"), from: q.get("from"), limit: Number(q.get("limit") ?? 24), favorite: q.get("favorite") === "1", album: q.get("album") ? Number(q.get("album")) : null, files: q.get("files") !== "0", kind: q.get("kind"), q: q.get("q") }));
 });
-route("GET", "/api/band", c => J(lib.band(lib_(c))));
+route("GET", "/api/band", c => { const q = c.url.searchParams; return J(lib.band(lib_(c), { kind: q.get("kind"), q: q.get("q") })); });
 route("GET", "/api/items/(\\d+)", c => { browser(c.p); const i = id(c.m[1]); const d = lib.detail(ownerOfItem(i), i); return d ? J(d) : fail(404, "Das gibt es nicht (mehr)."); });
 route("PATCH", "/api/items/(\\d+)", async c => { const p = browser(c.p); const b = await body(c.req); if ("favorite" in b) lib.setFavorite(p.owner, id(c.m[1]), !!b.favorite); return J({ ok: true }); });
 route("DELETE", "/api/items/(\\d+)", c => { lib.softDelete(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });

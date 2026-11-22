@@ -4,7 +4,26 @@
   import { parseMarkdown, type Block, type Inline } from "../lib/markdown";
   import { num } from "../lib/format";
   import Loading from "./Loading.svelte";
-  let { detail, plain = false }: { detail: DocDetail; /** monospace, wrapped, whatever the format (other files) */ plain?: boolean } = $props();
+  import { tick } from "svelte";
+  import { clearMarks, findInDom, markRanges } from "../lib/domfind";
+  // q: the viewer's search, at: its current hit (scrolled to), onfound: how many there are (docs/together.md)
+  let { detail, plain = false, q = "", at = 0, onfound }: { detail: DocDetail; /** monospace, wrapped, whatever the format (other files) */ plain?: boolean; q?: string; at?: number; onfound?: (n: number) => void } = $props();
+  let art: HTMLElement | undefined = $state();
+  let ranges: Range[] = [];
+  $effect(() => {
+    const query = q, el = art;
+    if (!el || text === null) return;
+    void tick().then(() => { ranges = query ? findInDom(el, query) : []; onfound?.(ranges.length); show(); });
+    return () => clearMarks();
+  });
+  function show() {
+    const r = ranges.length ? ranges[Math.min(at, ranges.length - 1)] : null;
+    markRanges(ranges, r);
+    if (!r) return;
+    const box = r.getBoundingClientRect(), sc = art?.closest(".scroll");
+    if (sc) sc.scrollTo({ top: sc.scrollTop + box.top - sc.getBoundingClientRect().top - sc.clientHeight / 3 });
+  }
+  $effect(() => { at; show(); });
 
   const CAP = 1_500_000;
   let text = $state<string | null>(null), error = $state(""), cut = $state(false);
@@ -55,7 +74,7 @@
   {#if error}<p class="note" role="alert">{error}</p>
   {:else if text === null}<Loading text="Text wird geladen" />
   {:else}
-    <article class:md aria-label="Text von {detail.title}">
+    <article class:md aria-label="Text von {detail.title}" bind:this={art}>
       {#if md}{@render blk(blocks)}{:else}<pre class="plain">{text}</pre>{/if}
       {#if cut}<p class="note">Zeigt die ersten {num(CAP)} Zeichen. Alles steht im Original.</p>{/if}
     </article>

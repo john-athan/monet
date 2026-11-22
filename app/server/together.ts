@@ -29,8 +29,8 @@ export async function dateDoc(id: number) {
     } catch { tags = {}; }
   }
   const meta = d.kind === "book" ? null : await metaDate(d.format, path, tags);
-  const text = (db.query("SELECT text FROM doc WHERE id = ?").get(id) as { text: string | null }).text;
-  const t = chooseDocDate({ meta, name: d.orig_name, text, modifiedAt: d.modified_at, uploadedAt: d.uploaded_at, kind: d.kind });
+  const r = db.query("SELECT text, words_ok FROM doc WHERE id = ?").get(id) as { text: string | null; words_ok: number };
+  const t = chooseDocDate({ meta, name: d.orig_name, text: r.text, modifiedAt: d.modified_at, uploadedAt: d.uploaded_at, kind: d.kind, scan: r.words_ok === 2 });
   db.query("UPDATE doc SET taken_at = ?, taken_src = ?, day = ? WHERE id = ?").run(t.takenAt, t.src, localDay(t.takenAt, null), id);
 }
 

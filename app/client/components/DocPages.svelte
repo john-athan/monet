@@ -2,8 +2,22 @@
   // The pages of a document stacked top to bottom. Every box has its proportions before its picture exists, and a
   // picture is only requested when its page is near the screen (and has stayed there a moment).
   import { SvelteMap, SvelteSet } from "svelte/reactivity";
-  import type { DocDetail } from "../../shared/types";
-  let { detail }: { detail: DocDetail } = $props();
+  import type { DocDetail, FindHit } from "../../shared/types";
+  import PageText from "./PageText.svelte";
+  // marks: the hits of the viewer's search; focus: the current one, scrolled to (docs/together.md)
+  let { detail, marks = [], focus = null }: { detail: DocDetail; marks?: FindHit[]; focus?: FindHit | null } = $props();
+  type B = [number, number, number, number];
+  const byPage = $derived.by(() => { const m = new Map<number, B[][]>(); for (const h of marks) if ("page" in h) (m.get(h.page) ?? m.set(h.page, []).get(h.page)!).push(h.boxes); return m; });
+  let scroller: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (!focus || !("page" in focus) || !scroller) return;
+    const f = focus;
+    wanted.add(f.page);
+    const el = scroller.querySelector<HTMLElement>(`.page[data-n="${f.page}"]`);
+    if (!el) return;
+    const y = Math.min(...f.boxes.map(b => b[1]));
+    scroller.scrollTo({ top: el.offsetTop + y * el.offsetHeight - scroller.clientHeight / 3, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
 
   const count = $derived(Math.max(1, detail.pages ?? 1));
   const base = $derived(detail.w > 0 && detail.h > 0 ? detail.w / detail.h : 1 / 1.414);
@@ -53,7 +67,7 @@
   }
 </script>
 
-<div class="scroll">
+<div class="scroll" bind:this={scroller}>
   <div class="pages" {@attach watch}>
     {#each { length: count } as _, k (k)}
       {@const n = k + 1}
@@ -61,6 +75,7 @@
         <div class="page" data-n={n} style:aspect-ratio={shape.get(n) ?? base}>
           {#if wanted.has(n)}
             <img src="/media/doc/{detail.id}/p/{n}" alt="Seite {n} von {count}" loading="lazy" decoding="async" onload={e => loadedImg(n, e)} />
+            <PageText doc={detail.id} {n} ratio={shape.get(n) ?? base} marks={byPage.get(n) ?? []} focus={focus && "page" in focus && focus.page === n ? focus.boxes : null} />
           {/if}
         </div>
         <figcaption class="tnum">{n}</figcaption>

@@ -2,7 +2,7 @@
   // Fotos: the whole library as days. Phone per Phone-Fotos, desktop per Desktop-Fotos.
   import { tick, onMount } from "svelte";
   import { app, sel, selectEnd, view, light, viewing, member, house, genitive, within } from "../lib/state.svelte";
-  import { tl, loadMore, band, loadBand, status, lists, refreshTimeline } from "../lib/stores.svelte";
+  import { tl, loadMore, band, loadBand, status, lists, refreshTimeline, jumper } from "../lib/stores.svelte";
   import { gone } from "../lib/actions.svelte";
   import { ids } from "../lib/layout";
   import { up } from "../lib/upload.svelte";
@@ -24,7 +24,7 @@
 
   onMount(() => {
     if (!tl.loaded) loadMore(16).then(() => loadMore(24));
-    if (!band.loaded) loadBand();
+    if (!band.loaded || band.key) loadBand();
     band.jump = jumpTo;
     // during and after an upload the new photos paint themselves in, the ones already there stay as they are
     const fresh = () => {
@@ -32,19 +32,10 @@
       refreshTimeline().then(ok => ok && tick().then(() => arrive(id => !seen.has(id)))); loadBand();
     };
     addEventListener("monet-uploaded", fresh);
-    return () => { band.jump = null; removeEventListener("monet-uploaded", fresh); };
+    return () => { if (band.jump === jumpTo) band.jump = null; removeEventListener("monet-uploaded", fresh); };
   });
 
-  let token = 0;
-  async function jumpTo(ym: string) {
-    const my = ++token;
-    const find = () => days.findIndex(d => d.date.slice(0, 7) <= ym);
-    let i = find();
-    while (i < 0 && tl.next && my === token) { if (!await loadMore(60)) { await new Promise(r => setTimeout(r, 120)); } i = find(); }
-    if (my !== token) return;
-    await tick();
-    t?.scrollToDay(i < 0 ? days.length - 1 : i);
-  }
+  const jumpTo = jumper({ days: () => days, more: () => loadMore(60), next: () => !!tl.next, scroll: i => t?.scrollToDay(i) });
   const onpos = (date: string) => { band.current = date.slice(0, 7); };
 
   // after two screens down a button leads back to the newest photos

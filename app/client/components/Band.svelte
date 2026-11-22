@@ -82,7 +82,7 @@
     <div class="years tnum" aria-hidden="true">
       {#each labels as y}<span style="flex:{y.n} 1 0">{y.y}</span>{/each}
     </div>
-    {#if month}<p class="sr" aria-live="polite">{monthShort(month.ym)}, {num(month.n)} Fotos</p>{/if}
+    {#if month}<p class="sr" aria-live="polite">{monthShort(month.ym)}, {num(month.n)} {band.unit}</p>{/if}
   </section>
 {/if}
 

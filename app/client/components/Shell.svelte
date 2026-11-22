@@ -1,7 +1,8 @@
 <script lang="ts">
   // The frame around a page: on the desktop the header, band, sidebar and the floating bar; on the phone the tab bar.
   import type { Snippet } from "svelte";
-  import { app, local, viewing, member, genitive } from "../lib/state.svelte";
+  import { app, viewing, member, genitive } from "../lib/state.svelte";
+  import { band } from "../lib/stores.svelte";
   import { themeOf } from "../lib/theme";
   import Link from "./Link.svelte";
   import { sectionOf } from "../lib/nav";
@@ -15,7 +16,6 @@
   import UploadCard from "./UploadCard.svelte";
   let { children, chrome = true }: { children: Snippet; chrome?: boolean } = $props();
   let importing = $state(false);
-  const onFotos = $derived(local() === "/");
   const guest = $derived(viewing() != null ? member(viewing()) : undefined);
 </script>
 {#snippet visit()}
@@ -25,7 +25,7 @@
 {/snippet}
 {#if chrome && app.wide}
   <Header onimport={() => (importing = true)} />
-  {#if onFotos}<Band vertical={false} />{/if}
+  {#if band.jump}<Band vertical={false} />{/if}
   <div class="body">
     <div class="side" data-vt="side"><Sidebar /></div>
     <main>{@render visit()}{@render children()}</main>

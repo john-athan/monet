@@ -9,15 +9,15 @@
   import Pick from "./Pick.svelte";
   import Icon from "./Icon.svelte";
   // a stack (docs/together.md) is a small pile with its count; a click fans it out (`onopen`), its files carry `stackOf`
-  let { doc, selectable = false, selected = false, ontoggle, stackOf = null, onopen, onclose }: { doc: DocSummary; selectable?: boolean; selected?: boolean; ontoggle?: () => void;
-    stackOf?: number | null; onopen?: () => void; onclose?: () => void } = $props();
+  let { doc, selectable = false, selected = false, ontoggle, stackOf = null, onopen, onclose, find = "" }: { doc: DocSummary; selectable?: boolean; selected?: boolean; ontoggle?: () => void;
+    stackOf?: number | null; onopen?: () => void; onclose?: () => void; /** words the viewer finds and jumps to (a mention, a search) */ find?: string } = $props();
   const pile = $derived(!!doc.stack && stackOf == null && !!onopen);
   function click(e: MouseEvent) {
     if (!pile || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault(); e.stopPropagation(); onopen!();
   }
   // a file of someone else (a search over the household) opens in their library
-  const href = $derived(within(`/datei/${doc.id}`, doc.owner ?? undefined));
+  const href = $derived(within(`/datei/${doc.id}${find ? `?finde=${encodeURIComponent(find)}` : ""}`, doc.owner ?? undefined));
   const fallback = $derived(doc.kind === "doc" ? 3 / 4 : 4 / 3);
   // books stand 2:3 on the shelf and tracks are square whatever the picture is, so the grid never jumps; the rest follows its first page
   const own = $derived(doc.kind === "book" || doc.kind === "audio" || doc.kind === "other");

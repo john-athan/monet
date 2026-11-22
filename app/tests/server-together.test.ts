@@ -35,6 +35,8 @@ describe("dates of files", () => {
     expect(chooseDocDate({ ...base, kind: "book", text: "Datum: 05.06.2018" }).src).toBe("upload");
     expect(chooseDocDate({ ...base, modifiedAt: Date.UTC(2022, 1, 2) })).toEqual({ takenAt: Date.UTC(2022, 1, 2), src: "mtime" });
     expect(chooseDocDate(base)).toEqual({ takenAt: UP, src: "upload" });
+    // a scan: the date on the letter beats the day it was scanned
+    expect(chooseDocDate({ ...base, meta: Date.UTC(2024, 0, 1), text: "Berlin, 05.06.2018", scan: true }).src).toBe("text");
   });
 });
 

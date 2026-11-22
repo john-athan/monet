@@ -67,6 +67,28 @@ query's best label takes at least 50 % of the softmax over the vocabulary, then 
 three; "house" finds "Haus"); and the vectors. Person and place chips match files that name them, date chips the
 file's day. Without words or a vector the chips alone list files, newest first.
 
+## Text on the page
+
+Every document and presentation keeps where its text stands (`server/doctext.ts`, `doc.words_ok`): after the render,
+`pdftotext -bbox-layout` gives every line and word with its box, stored as `<sha>-w.ndjson` (one JSON line per page,
+boxes as fractions of the page). A file with fewer than 20 letters per page is a scan: the OCR queue reads its first
+30 pages (the 1600 px page pictures, after the photos, one file at a time), its lines become the text layer and,
+when the file had no text, its text; then it is dated (a scan takes the date written on it before its own
+CreationDate, which is the day it was scanned), linked and embedded again.
+
+- `GET /api/docs/:id/words/:n`: the lines of page n. The viewer lays them over the page picture as invisible SVG
+  text stretched to each line's box, so text can be selected and copied and the browser's own find sees the pages
+  that are loaded.
+- `GET /api/docs/:id/find?q=`: where a text stands, at most 500 hits: `{page, boxes}` for documents and
+  presentations, `{sheet, row, col}` for sheets (the first 200 000 rows of each). Case, accents and ß do not matter,
+  a hit may span words and lines.
+- The viewer's own search (the Suchen button, Cmd/Ctrl+F on pages, slides and sheets) asks the server, marks every
+  hit and goes from one to the next (Enter, Shift+Enter). Text files search their own text in the page.
+- `/datei/<id>?finde=<words>`: a mention ("Erwähnt in" on a person's or place's page, with their name) and a search
+  hit (with the words searched, else the person or place) open the file at the first hit, with the search open.
+  Without a hit the file opens as always: the jump only happens where the words really stand. A recording marks
+  the transcript segments that hold the words.
+
 ## Labels
 
 A file gets the labels its pages show, as a photo would (softmax share 15 %, at most three), without the ones every

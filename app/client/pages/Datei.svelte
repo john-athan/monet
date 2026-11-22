@@ -1,10 +1,11 @@
 <script lang="ts">
   // One file, for viewing only. It fills the screen like a photo does; the header carries the title and what you can do
   // with the file, the body is one of the viewers: pages, slides, sheet, book, audio, text, or a download panel.
-  import type { DocDetail, DocKind } from "../../shared/types";
+  import { untrack } from "svelte";
+  import type { DocDetail, DocKind, FindHit, FindOut } from "../../shared/types";
   import { KINDS, fileSign } from "../lib/files.svelte";
   import { api, post } from "../lib/api";
-  import { backOr, go, toast, house } from "../lib/state.svelte";
+  import { backOr, go, toast, house, app as appState } from "../lib/state.svelte";
   import { bytes, duration, fullDate, num } from "../lib/format";
   import Icon from "../components/Icon.svelte";
   import Link from "../components/Link.svelte";
@@ -33,7 +34,8 @@
       if (my === id) d = r;
     } catch (e: any) { if (my === id && !quiet) error = e.message; }
   }
-  $effect(() => { id; d = null; error = ""; details = false; load(); });
+  // only the id starts a load: what api() reads on the way (whose library is open) must not load the file again
+  $effect(() => { id; untrack(() => { d = null; error = ""; details = false; load(); }); });
   // while the pages are being made, ask again every 3 s
   $effect(() => {
     if (d?.state !== "pending") return;
@@ -45,6 +47,50 @@
     const before = document.title; document.title = `${d.title}, Monet`;
     return () => { document.title = before; };
   });
+
+  /* ---- find in the file (docs/together.md, "Text on the page"): pages, slides and sheets ask the server, the text view
+     searches its own text. ?finde=<words> (a mention, a search hit) opens at the first hit, and only when there is one. */
+  const findable = $derived(!!d && d.state === "ok" && (d.kind === "doc" || d.kind === "slides" || d.kind === "sheet" || (d.kind === "other" && !!d.text)));
+  const inText = $derived(!!d && ((textual && !asPages) || d.kind === "other"));
+  let finding = $state(false), fq = $state(""), hits = $state<FindHit[]>([]), at = $state(0), textHits = $state(0), searched = $state(""), more = $state(false);
+  let fin: HTMLInputElement | undefined = $state();
+  const total = $derived(inText ? textHits : hits.length);
+  const focusHit = $derived(!inText && finding && hits.length ? hits[Math.min(at, hits.length - 1)] : null);
+  const wanted = () => new URLSearchParams(appState.query).get("finde")?.trim() ?? "";
+  async function run(q: string) {
+    if (!d) return;
+    const my = d.id;
+    searched = q; at = 0;
+    if (inText) return; // the text view counts itself (onfound)
+    if (!q) { hits = []; more = false; return; }
+    try { const r = await api<FindOut>(`/api/docs/${my}/find?q=${encodeURIComponent(q)}`); if (my === d?.id && searched === q) { hits = r.hits; more = r.more; } }
+    catch { hits = []; }
+  }
+  // typing waits a moment
+  $effect(() => { const q = fq.trim(); if (!finding || q === searched) return; const t = setTimeout(() => run(q), 250); return () => clearTimeout(t); });
+  // a mention: search once the file is there, open the bar only for a hit
+  let opened = -1;
+  $effect(() => {
+    if (!d || !findable || opened === d.id) return;
+    const q = wanted(); opened = d.id;
+    if (!q) return;
+    fq = q;
+    if (inText) { searched = q; finding = true; return; } // the text view opens at its first hit; with none the bar says so
+    void run(q).then(() => { if (hits.length) finding = true; });
+  });
+  function openFind() { finding = true; requestAnimationFrame(() => { fin?.focus(); fin?.select(); }); }
+  function closeFind() { finding = false; fq = ""; searched = ""; hits = []; textHits = 0; }
+  const step = (k: number) => { if (total) at = (at + k + total) % total; };
+  // Cmd/Ctrl+F opens this find where the browser's own cannot see everything (pages not loaded yet, sheet rows not fetched)
+  $effect(() => {
+    if (!findable) return;
+    const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "f") { e.preventDefault(); openFind(); } };
+    addEventListener("keydown", k, true); return () => removeEventListener("keydown", k, true);
+  });
+  const findKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFind(); }
+    else if (e.key === "Enter") { e.preventDefault(); if (fq.trim() !== searched) run(fq.trim()); else step(e.shiftKey ? -1 : 1); }
+  };
 
   // back: where you came from, else the list of its kind
   const back = () => backOr(LIST);
@@ -88,6 +134,9 @@
       {#if d && textual && d.state === "ok"}
         <button type="button" class="pill" aria-pressed={asPages} onclick={() => (asPages = !asPages)}>{asPages ? "Als Text" : "Als Seiten"}</button>
       {/if}
+      {#if findable}
+        <button type="button" class="pill ib" aria-label="In der Datei suchen" aria-pressed={finding} onclick={() => (finding ? closeFind() : openFind())}><Icon name="suche" size={20} sw={1.9} /><span class="lbl">Suchen</span></button>
+      {/if}
       {#if d}
         <a class="pill ib" href="/media/doc/{id}/o" download aria-label="Herunterladen"><Icon name="herunterladen" size={20} sw={1.9} /><span class="lbl">Herunterladen</span></a>
         {#if mine}
@@ -98,6 +147,16 @@
       {/if}
     </div>
   </header>
+
+  {#if finding}
+    <div class="find" role="search" aria-label="In der Datei suchen">
+      <input bind:this={fin} type="search" bind:value={fq} onkeydown={findKey} placeholder="In der Datei suchen" aria-label="Suchbegriff" />
+      <span class="cnt tnum" role="status">{!searched ? "" : total ? `${num(Math.min(at, total - 1) + 1)} von ${num(total)}${more ? "+" : ""}` : "Kein Treffer"}</span>
+      <button type="button" class="ib sm" aria-label="Voriger Treffer" disabled={!total} onclick={() => step(-1)}><Icon name="hoch" size={18} sw={2} /></button>
+      <button type="button" class="ib sm down" aria-label="Nächster Treffer" disabled={!total} onclick={() => step(1)}><Icon name="hoch" size={18} sw={2} /></button>
+      <button type="button" class="ib sm" aria-label="Suche schließen" onclick={closeFind}><Icon name="x" size={18} sw={2} /></button>
+    </div>
+  {/if}
 
   {#if d && details}
     <section id="datei-details" class="details" aria-label="Details zur Datei">
@@ -137,10 +196,10 @@
     {:else if d.kind === "book"}
       {#key d.id}<BookReader detail={d} />{/key}
     {:else if d.kind === "audio"}
-      <AudioView detail={d} />
+      <AudioView detail={d} mark={wanted()} />
     {:else if d.kind === "other"}
       {#if d.text}
-        <TextView detail={d} plain />
+        <TextView detail={d} plain q={finding ? searched : ""} {at} onfound={n => (textHits = n)} />
       {:else}
         <div class="msg" role="status">
           <p class="big">Diese Datei kann Monet nicht anzeigen.</p>
@@ -149,13 +208,13 @@
         </div>
       {/if}
     {:else if d.kind === "sheet"}
-      <SheetGrid detail={d} />
+      <SheetGrid detail={d} marks={finding ? hits : []} focus={focusHit} />
     {:else if d.kind === "slides"}
-      <SlideView detail={d} />
+      <SlideView detail={d} marks={finding ? hits : []} focus={focusHit} />
     {:else if textual && !asPages}
-      <TextView detail={d} />
+      <TextView detail={d} q={finding ? searched : ""} {at} onfound={n => (textHits = n)} />
     {:else}
-      <DocPages detail={d} />
+      <DocPages detail={d} marks={finding ? hits : []} focus={focusHit} />
     {/if}
   </div>
 </div>
@@ -183,6 +242,13 @@
   dl { display: grid; grid-template-columns: 96px minmax(0, 1fr); row-gap: 6px; column-gap: 10px; margin: 0; font-size: 13.5px; }
   dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
   .path :global(a) { color: var(--water); } .path :global(a:hover) { text-decoration: underline; }
+  .find { position: absolute; z-index: 6; top: calc(66px + env(safe-area-inset-top)); right: 10px; display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 8px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); max-width: calc(100% - 20px); }
+  .find input { width: min(260px, 44vw); height: 36px; padding: 0 12px; border: 0; border-radius: 18px; background: var(--surface-2); font-size: 15px; }
+  .find input:focus { outline: 2px solid var(--water); outline-offset: 0; }
+  .cnt { min-width: 74px; padding: 0 6px; font-size: 12.5px; color: var(--muted); text-align: center; white-space: nowrap; }
+  .sm { min-width: 36px; height: 36px; }
+  .sm:disabled { opacity: .4; }
+  .down :global(svg) { transform: rotate(180deg); }
   .body { flex: 1; min-height: 0; display: flex; flex-direction: column; min-width: 0; }
   .msg { margin: auto; padding: 24px; max-width: 420px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
   .big { font-family: var(--font-display); font-size: 28px; line-height: 1.15; } .m { color: var(--muted); }

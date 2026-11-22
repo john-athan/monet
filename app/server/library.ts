@@ -4,7 +4,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { db } from "./db";
 import { dayTitle, daySign, monthPalette } from "./calc";
-import { COLS_DOC_SUMMARY, DOC_TOP, purgeDocs, summary as docSummary, transcriptRow } from "./docs";
+import { COLS_DOC_SUMMARY, DOC_TOP, ftsMatch, purgeDocs, summary as docSummary, transcriptRow } from "./docs";
 import { ORIGINALS, rankBurst, thumbPath } from "./ingest";
 import { countryName } from "./places";
 import { HttpError, json, now, todayBerlin } from "./util";
@@ -36,7 +36,18 @@ export function summariesByIds(owner: number, ids: number[]): ItemSummary[] {
 }
 
 /* ---------- timeline ---------- */
-export type TimelineQuery = { cursor?: string | null; from?: string | null; limit?: number; favorite?: boolean; album?: number | null; /** false: photos and videos only */ files?: boolean };
+export type TimelineQuery = { cursor?: string | null; from?: string | null; limit?: number; favorite?: boolean; album?: number | null; /** false: photos and videos only */ files?: boolean;
+  /** the files of one kind and no photos: the timeline of Dokumente, Audio, Bücher (docs/together.md) */ kind?: string | null; /** with kind: only files whose title or text match */ q?: string | null };
+const FILE_KINDS = ["doc", "sheet", "slides", "book", "audio", "other"];
+/** The doc filter of a timeline or band of one kind, searched or not. */
+function kindWhere(q: TimelineQuery, where: string[], args: any[]) {
+  if (!q.kind) return;
+  if (!FILE_KINDS.includes(q.kind)) throw new HttpError(400, "Diese Art von Datei gibt es nicht.");
+  where.push("d.kind = ?"); args.push(q.kind);
+  const m = ftsMatch(String(q.q ?? "").slice(0, 200));
+  // a search finds a version inside a stack too, so the stack filter only holds without one
+  if (m) { where[where.indexOf(DOC_TOP)] = "1"; where.push("d.id IN (SELECT rowid FROM doc_fts WHERE doc_fts MATCH ?)"); args.push(m); }
+}
 /** Days newest first. `limit` counts days. `next` is the last day returned when more follow, to pass back as `cursor`. */
 export function timeline(owner: number, q: TimelineQuery = {}): Timeline {
   const limit = Math.max(1, Math.min(60, Math.floor(q.limit ?? 24)));
@@ -50,37 +61,50 @@ export function timeline(owner: number, q: TimelineQuery = {}): Timeline {
   // files stand on the days they were made (docs/together.md); favourites and albums hold photos only
   const files = q.files !== false && !q.favorite && !q.album;
   const dw = [`d.owner_id = ?`, "d.deleted_at IS NULL", "d.state != 'failed'", "d.day IS NOT NULL", DOC_TOP], dargs: any[] = [owner];
+  kindWhere(q, dw, dargs);
   if (q.from && /^\d{4}-(0[1-9]|1[0-2])$/.test(q.from)) { dw.push("d.day <= ?"); dargs.push(q.from + "-31"); }
   if (q.cursor && /^\d{4}-\d{2}-\d{2}$/.test(q.cursor)) { dw.push("d.day < ?"); dargs.push(q.cursor); }
   const dws = dw.join(" AND ");
-  const days = (files
+  const days = (q.kind
+    ? db.query(`SELECT DISTINCT d.day FROM doc d WHERE ${dws} ORDER BY d.day DESC LIMIT ?`).all(...dargs, limit + 1)
+    : files
     ? db.query(`SELECT day FROM (SELECT DISTINCT i.day AS day FROM item i WHERE ${w} UNION SELECT DISTINCT d.day FROM doc d WHERE ${dws}) ORDER BY day DESC LIMIT ?`).all(...args, ...dargs, limit + 1)
     : db.query(`SELECT DISTINCT i.day FROM item i WHERE ${w} ORDER BY i.day DESC LIMIT ?`).all(...args, limit + 1) as { day: string }[]).map((r: any) => r.day as string);
   const more = days.length > limit;
   const shown = days.slice(0, limit);
   if (!shown.length) return { days: [], next: null };
-  const rows = db.query(`SELECT ${SUM_COLS}, p.name AS place_name FROM item i LEFT JOIN place p ON p.id = i.place_id
+  const rows = q.kind ? [] : db.query(`SELECT ${SUM_COLS}, p.name AS place_name FROM item i LEFT JOIN place p ON p.id = i.place_id
     WHERE ${w} AND i.day BETWEEN ? AND ? ORDER BY i.taken_at DESC, i.id DESC`).all(...args, shown[shown.length - 1], shown[0]) as any[];
   const docsByDay = new Map<string, DocSummary[]>();
-  if (files) for (const r of db.query(`SELECT ${COLS_DOC_SUMMARY}, d.day FROM doc d WHERE ${dws} AND d.day BETWEEN ? AND ? ORDER BY d.taken_at DESC, d.id DESC`).all(...dargs, shown[shown.length - 1], shown[0]) as any[])
+  if (files || q.kind) for (const r of db.query(`SELECT ${COLS_DOC_SUMMARY}, d.day FROM doc d WHERE ${dws} AND d.day BETWEEN ? AND ? ORDER BY d.taken_at DESC, d.id DESC`).all(...dargs, shown[shown.length - 1], shown[0]) as any[])
     (docsByDay.get(r.day) ?? docsByDay.set(r.day, []).get(r.day)!).push(docSummary(r));
+  return { days: daysOf(shown, rows, docsByDay), next: more ? shown[shown.length - 1] : null };
+}
+/** The given dates, newest first, as timeline days: item rows (SUM_COLS, day, place_name) and files grouped onto them.
+ *  `item` makes the summary (search marks photos of another library). */
+export function daysOf(dates: string[], rows: any[], docsByDay: Map<string, DocSummary[]>, item: (r: any) => ItemSummary = summary): TimelineDay[] {
   const today = todayBerlin();
   const byDay = new Map<string, any[]>();
   for (const r of rows) (byDay.get(r.day) ?? byDay.set(r.day, []).get(r.day)!).push(r);
-  const out: TimelineDay[] = shown.map(date => {
+  return dates.map(date => {
     const rs = byDay.get(date) ?? [];
     const places = new Map<string, number>();
     for (const r of rs) if (r.place_name) places.set(r.place_name, (places.get(r.place_name) ?? 0) + 1);
     const place = [...places.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     const sign = daySign(rs.flatMap(r => json<string[]>(r.colors, [])));
-    return { date, title: dayTitle(date, today), place, ...sign, items: rs.map(summary), docs: docsByDay.get(date) ?? [] };
+    return { date, title: dayTitle(date, today), place, ...sign, items: rs.map(item), docs: docsByDay.get(date) ?? [] };
   });
-  return { days: out, next: more ? shown[shown.length - 1] : null };
 }
 
 /** One tile per month: the mean colours of the first, middle and last third of the month, for the scrubber strip. */
-export function band(owner: number): Band {
-  const rows = db.query(`SELECT substr(i.day, 1, 7) AS ym, i.color, i.colors FROM item i WHERE i.owner_id = ? AND ${SHOWN}`).all(owner) as { ym: string; color: string | null; colors: string | null }[];
+export function band(owner: number, q: Pick<TimelineQuery, "kind" | "q"> = {}): Band {
+  const rows = q.kind ? [] : db.query(`SELECT substr(i.day, 1, 7) AS ym, i.color, i.colors FROM item i WHERE i.owner_id = ? AND ${SHOWN}`).all(owner) as { ym: string; color: string | null; colors: string | null }[];
+  const dw = ["d.owner_id = ?", "d.deleted_at IS NULL", "d.state != 'failed'", "d.day IS NOT NULL", DOC_TOP], dargs: any[] = [owner];
+  kindWhere(q, dw, dargs);
+  return bandOf(rows, db.query(`SELECT substr(d.day, 1, 7) AS ym, count(*) AS n FROM doc d WHERE ${dw.join(" AND ")} GROUP BY ym`).all(...dargs) as { ym: string; n: number }[]);
+}
+/** The band from photo rows (their month and colours) and file counts per month. */
+export function bandOf(rows: { ym: string; color: string | null; colors: string | null }[], docMonths: { ym: string; n: number }[]): Band {
   const by = new Map<string, { n: number; pool: string[] }>();
   for (const r of rows) {
     const m = by.get(r.ym) ?? by.set(r.ym, { n: 0, pool: [] }).get(r.ym)!;
@@ -89,7 +113,7 @@ export function band(owner: number): Band {
     if (Array.isArray(cs)) for (const c of cs) { if (typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c)) m.pool.push(c); }
     else if (r.color) m.pool.push(r.color);
   }
-  for (const r of db.query(`SELECT substr(d.day, 1, 7) AS ym, count(*) AS n FROM doc d WHERE d.owner_id = ? AND d.deleted_at IS NULL AND d.state != 'failed' AND d.day IS NOT NULL AND ${DOC_TOP} GROUP BY ym`).all(owner) as { ym: string; n: number }[])
+  for (const r of docMonths)
     (by.get(r.ym) ?? by.set(r.ym, { n: 0, pool: [] }).get(r.ym)!).n += r.n;
   const months = [...by.entries()].sort((a, b) => b[0].localeCompare(a[0]))
     .map(([ym, m]) => ({ ym, n: m.n, colors: m.pool.length ? monthPalette(m.pool) : [] }));

@@ -4,14 +4,15 @@
   import { api } from "../lib/api";
   import { count } from "../lib/format";
   import DocCard from "./DocCard.svelte";
-  let { kind, id }: { kind: "person" | "place"; id: number } = $props();
+  // name: what the file says, so the viewer opens where it says it
+  let { kind, id, name = "" }: { kind: "person" | "place"; id: number; name?: string } = $props();
   let docs = $state<DocSummary[]>([]);
   $effect(() => { const my = id; docs = []; api<DocSummary[]>(`/api/links?${kind}=${my}`).then(r => { if (my === id) docs = r; }).catch(() => {}); });
 </script>
 {#if docs.length}
   <section class="men" aria-label="Erwähnt in">
     <h2>Erwähnt in <span class="tnum n">{count(docs.length, "Datei", "Dateien")}</span></h2>
-    <div class="strip">{#each docs as d (d.id)}<div class="dc"><DocCard doc={d} /></div>{/each}</div>
+    <div class="strip">{#each docs as d (d.id)}<div class="dc"><DocCard doc={d} find={name} /></div>{/each}</div>
   </section>
 {/if}
 <style>

@@ -1,72 +1,78 @@
 <script lang="ts">
-  // Dokumente, Tabellen, Präsentationen: the covers by month of their change, a search over title and text.
+  // Dokumente, Tabellen, Präsentationen, Bücher, Audio: the files of one kind on the timeline of the photos, on their
+  // own days (docs/together.md), with the band to jump through the years. A search keeps the timeline, of its hits.
   import { onMount, untrack } from "svelte";
-  import type { DocKind, DocSummary } from "../../shared/types";
+  import type { DocKind } from "../../shared/types";
   import { app, viewing } from "../lib/state.svelte";
-  import { KINDS, docList, monthLabel, onUploaded } from "../lib/files.svelte";
+  import { KINDS, onUploaded } from "../lib/files.svelte";
+  import { band, loadBand, kindTimeline, makeTimeline, jumper } from "../lib/stores.svelte";
   import { count } from "../lib/format";
   import PageHead from "../components/PageHead.svelte";
-  import DocCard from "../components/DocCard.svelte";
+  import Timeline from "../components/Timeline.svelte";
+  import Band from "../components/Band.svelte";
   import FilePills from "../components/FilePills.svelte";
   import ImportSheet from "../components/ImportSheet.svelte";
   import Loading from "../components/Loading.svelte";
   import { stacks, openStack, closeStack, followStacks, withStack } from "../lib/stacks.svelte";
   let { kind }: { kind: DocKind } = $props();
   const k = $derived(KINDS[kind]);
-  // one list per page: App mounts each kind as its own page
-  const list = untrack(() => docList(kind)), s = list.s;
-  let q = $state(""), importing = $state(false);
-  onMount(() => { list.reload(); });
-  onUploaded(() => list.reload());
+  const NONE: Partial<Record<DocKind, string>> = { doc: "keine Dokumente", sheet: "keine Tabellen", slides: "keine Präsentationen", book: "keine Bücher", audio: "kein Audio" };
+  const DROP: Partial<Record<DocKind, string>> = { book: "EPUB-Dateien", audio: "Musik" };
+
+  // the timeline of the kind is kept between visits; a search is a timeline of its own
+  let q = $state(""), shownQ = $state(""), importing = $state(false);
+  const base = untrack(() => kindTimeline(kind));
+  let cur = $state(base);
+  const s = $derived(cur.tl);
+  const key = $derived(`kind=${kind}${shownQ ? `&q=${encodeURIComponent(shownQ)}` : ""}`);
+  const unit = $derived(kind === "audio" ? "Titel" : kind === "book" ? "Bücher" : "Dateien");
   // typing waits a moment, so a word is not searched letter by letter
   $effect(() => {
     const v = q.trim();
-    if (v === list.s.q) return;
-    const t = setTimeout(() => list.search(v), 250);
+    if (v === untrack(() => shownQ)) return;
+    const t = setTimeout(() => {
+      shownQ = v; cur = v ? makeTimeline(`kind=${kind}&q=${encodeURIComponent(v)}`) : base;
+      if (!cur.tl.loaded) cur.loadMore(16);
+      loadBand(key, unit); scrollTo({ top: 0, behavior: "auto" });
+    }, 250);
     return () => clearTimeout(t);
   });
+
+  const days = $derived(s.days.map(d => ({ ...d, docs: withStack(d.docs ?? []) })).filter(d => d.docs.length));
   $effect(() => { void app.query; followStacks(); });
-  const groups = $derived.by(() => {
-    const out: { label: string; docs: (DocSummary & { stackOf?: number })[] }[] = [];
-    for (const d of withStack(s.docs)) {
-      const label = monthLabel(d.modifiedAt), last = out.at(-1);
-      if (last && last.label === label) last.docs.push(d); else out.push({ label, docs: [d] });
-    }
-    return out;
+  let t: Timeline | undefined = $state();
+  const jumpTo = jumper({ days: () => days, more: () => cur.loadMore(60), next: () => !!cur.tl.next, scroll: i => t?.scrollToDay(i) });
+  const onpos = (date: string) => { band.current = date.slice(0, 7); };
+  onMount(() => {
+    if (!base.tl.loaded) base.loadMore(16).then(() => base.loadMore(24));
+    if (!band.loaded || band.key !== key) loadBand(key, unit);
+    band.jump = jumpTo;
+    return () => { if (band.jump === jumpTo) band.jump = null; };
   });
-  const empty = $derived(`Noch keine ${({ doc: "Dokumente", sheet: "Tabellen", slides: "Präsentationen" } as const)[kind]}. ${app.wide ? "Ziehe Dateien in das Fenster oder wähle" : "Wähle"} „Importieren“.`);
-  // the next page loads when the end of the list comes near
-  let end: HTMLElement | undefined = $state();
-  $effect(() => {
-    if (!end) return;
-    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) list.more(); }, { rootMargin: "600px" });
-    io.observe(end); return () => io.disconnect();
-  });
+  onUploaded(() => { cur.refresh(); loadBand(key, unit); });
+  const total = $derived(band.key === key ? band.months.reduce((n, m) => n + m.n, 0) : 0);
+  const empty = $derived(`Noch ${NONE[kind]}. ${app.wide ? `Ziehe ${DROP[kind] ?? "Dateien"} in das Fenster oder wähle` : "Wähle"} „Importieren“.`);
 </script>
 <FilePills />
-<PageHead title={k.title} room={k.room} sub={s.loaded && !s.q ? count(s.docs.length, k.one, k.title) + (s.next ? " und mehr" : "") : ""}>
+<PageHead title={k.title} room={k.room} sub={band.loaded && band.key === key && !shownQ && total ? count(total, k.one, kind === "audio" ? "Titel" : k.title) : ""}>
   {#if !app.wide && viewing() == null}<button type="button" class="pill" onclick={() => (importing = true)}>Importieren</button>{/if}
 </PageHead>
 <div class="bar"><input type="search" bind:value={q} placeholder="{k.title} durchsuchen" aria-label="{k.title} durchsuchen" /></div>
 {#if s.error}<p class="m" role="alert">{s.error}</p>{/if}
-{#if s.loaded && !s.docs.length}<p class="m">{s.q ? `Zu „${s.q}“ gibt es keine ${k.title}.` : empty}</p>{/if}
-{#each groups as g (g.label)}
-  <section aria-label={g.label}>
-    <h2>{g.label}</h2>
-    <div class="grid">{#each g.docs as d (d.id)}<DocCard doc={d} stackOf={d.stackOf ?? null} onopen={() => openStack(d.id)} onclose={stacks.open === d.id ? closeStack : undefined} />{/each}</div>
-  </section>
-{/each}
-{#if s.loading && !s.loaded}<Loading text="Die Dateien kommen" />{/if}
-<div bind:this={end} class="end"></div>
+{#if s.loaded && !days.length}<p class="m">{shownQ ? `Zu „${shownQ}“ gibt es ${NONE[kind]}.` : empty}</p>{/if}
+<div class="tlwrap" class:wide={app.wide}>
+  <Timeline bind:this={t} {days} wide={app.wide} {onpos} onend={() => cur.loadMore()} open={stacks.open} onstack={openStack} onfold={closeStack} />
+</div>
+{#if !s.loaded}<Loading text="Die Dateien kommen" />{/if}
+{#if !app.wide && band.loaded && band.key === key && band.months.length}<Band vertical />{/if}
 <ImportSheet bind:open={importing} />
 <style>
   .bar { padding: 6px 14px 0; max-width: 520px; }
   input { width: 100%; height: 46px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule); font-size: 16px; }
   input:focus { box-shadow: inset 0 0 0 1.5px var(--water); }
-  h2 { font-size: 24px; padding: 20px 14px 8px; }
-  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; padding: 0 14px; align-items: start; }
   .m { padding: 18px 14px; color: var(--muted); }
   .pill { height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: var(--surface-2); font-size: 14px; font-weight: 650; }
-  .end { height: 1px; }
-  @media (min-width: 900px) { .bar, h2, .grid, .m { padding-left: 0; padding-right: 0; } .grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 24px 16px; } }
+  .tlwrap { padding-right: 22px; }
+  .tlwrap.wide { padding-right: 0; }
+  @media (min-width: 900px) { .bar, .m { padding-left: 0; padding-right: 0; } }
 </style>

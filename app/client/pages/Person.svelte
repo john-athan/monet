@@ -71,7 +71,7 @@
       {#if into}<button type="button" class="ink" disabled={busy} onclick={() => merge()}>Mit {into.name} zusammenführen</button>{/if}
     </section>
   {/if}
-  <Mentioned kind="person" {id} />
+  <Mentioned kind="person" {id} name={named?.name ?? ""} />
   {#if !items}<Loading />{:else if !items.length}<p class="m">Hier ist noch kein Foto.</p>{:else}<Grid {items} />{/if}
 </div>
 <style>

@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import type { Chip, ItemSummary, SearchOut } from "../../shared/types";
   import { app, backOr, go, setQuery, view, viewing, member, house, genitive } from "../lib/state.svelte";
-  import { people, loadPeople } from "../lib/stores.svelte";
+  import { people, loadPeople, band, setBand, jumper } from "../lib/stores.svelte";
   import { gone } from "../lib/actions.svelte";
   import { embed, parseText, searchChips } from "../lib/search.svelte";
   import { justify, WIDE } from "../lib/layout";
@@ -12,9 +12,13 @@
   import Icon from "../components/Icon.svelte";
   import Loading from "../components/Loading.svelte";
   import DocCard from "../components/DocCard.svelte";
+  import Timeline from "../components/Timeline.svelte";
+  import Band from "../components/Band.svelte";
+  import type { TimelineDay } from "../../shared/types";
+  import { stacks, openStack, closeStack, followStacks, withStack } from "../lib/stacks.svelte";
 
   const q = $derived(new URLSearchParams(app.query).get("q") ?? "");
-  let chips = $state<Chip[]>([]), out = $state<SearchOut | null>(null), sort = $state<"best" | "date">("best");
+  let chips = $state<Chip[]>([]), out = $state<SearchOut | null>(null), sort = $state<"best" | "date">("date");
   let busy = $state(false), error = $state(""), note = $state<"" | "loading" | "failed">("");
   // the whole household or only the library on screen; remembered on this device
   const readAll = () => { try { return localStorage.getItem("monet-suche-alle") === "1"; } catch { return false; } };
@@ -27,13 +31,49 @@
     run(q);
   }
   let seq = 0, debounce: ReturnType<typeof setTimeout>;
-  const items = $derived((out?.items ?? []).filter(i => !gone.has(i.id)));
+  // by date the hits stand on their days like the timeline, photos and files together, with the band to jump
+  let days = $state<TimelineDay[]>([]), more = $state(false), paging = false;
+  const PAGE = 300;
+  const asDays = $derived(sort === "date" && !!out?.days);
+  const shownDays = $derived(days.map(d => ({ ...d, items: d.items.filter(i => !gone.has(i.id)), docs: withStack(d.docs ?? []) })).filter(d => d.items.length || d.docs.length));
+  const items = $derived(asDays ? shownDays.flatMap(d => d.items) : (out?.items ?? []).filter(i => !gone.has(i.id)));
   $effect(() => { view.ids = items.map(i => i.id); });
+  $effect(() => { void app.query; followStacks(); });
+  let t: Timeline | undefined = $state();
+  /** the next page of hits by date; a day that runs over the page edge grows */
+  async function loadMore(): Promise<boolean> {
+    if (!more || paging || !out) return false;
+    paging = true;
+    const my = seq, offset = days.reduce((n, d) => n + d.items.length, 0);
+    try {
+      const r = await searchChips(chips, "date", PAGE, everyone && shared, lastVec, offset, true);
+      if (my !== seq) return false;
+      const next = [...days];
+      for (const d of r.days ?? []) { const last = next.at(-1); if (last && last.date === d.date) next[next.length - 1] = { ...last, items: [...last.items, ...d.items], docs: [...last.docs, ...d.docs] }; else next.push(d); }
+      days = next; more = offset + r.items.length < r.total;
+      return true;
+    } catch { return false; } finally { paging = false; }
+  }
+  const jumpTo = jumper({ days: () => shownDays, more: loadMore, next: () => more, scroll: i => t?.scrollToDay(i) });
+  const onpos = (date: string) => { band.current = date.slice(0, 7); };
+  $effect(() => {
+    if (!asDays || !items.length && !shownDays.length) return;
+    band.jump = jumpTo;
+    return () => { if (band.jump === jumpTo) band.jump = null; };
+  });
+  /** a fresh answer: its days and band take the place of the ones before */
+  function take(r: SearchOut) {
+    out = r;
+    if (!r.days) return;
+    days = r.days; more = r.items.length < r.total;
+    setBand(`suche:${seq}`, r.band ?? [], "Treffer");
+  }
+  let lastVec: string | undefined;
   onMount(() => { loadPeople(); });
 
   async function run(text: string, given?: Chip[]) {
     const my = ++seq; error = "";
-    if (!text.trim() && !given?.length) { chips = []; out = null; busy = false; note = ""; return; }
+    if (!text.trim() && !given?.length) { chips = []; out = null; days = []; busy = false; note = ""; return; }
     busy = true;
     try {
       const all = everyone && shared;
@@ -46,19 +86,24 @@
       const pv = content ? embed(content.value) : null;
       const vec = pv ? await Promise.race([pv.catch(() => undefined), new Promise<undefined>(r => setTimeout(r, 300))]) : undefined;
       if (my !== seq) return;
-      out = await searchChips(cs, sort, 120, all, vec);
+      lastVec = vec;
+      const first = await searchChips(cs, sort, sort === "date" ? PAGE : 120, all, vec, 0, sort === "date");
       if (my !== seq) return;
+      take(first);
       busy = false; note = pv && !vec ? "loading" : "";
       if (!pv || vec) return;
       let late: string;
       try { late = await pv; } catch { if (my === seq) note = "failed"; return; }
       if (my !== seq) return;
-      const r = await searchChips(cs, sort, 120, all, late);
-      if (my === seq) { out = r; note = ""; }
+      lastVec = late;
+      const r = await searchChips(cs, sort, sort === "date" ? PAGE : 120, all, late, 0, sort === "date");
+      if (my === seq) { take(r); note = ""; }
     } catch (e: any) { if (my === seq) { error = e.message; busy = false; } }
   }
   // the text in the URL is the truth; typing waits 250 ms
   $effect(() => { const text = q; clearTimeout(debounce); debounce = setTimeout(() => run(text), 250); return () => clearTimeout(debounce); });
+  // what a file opens at: the typed words, else the person or place it was found by (the viewer jumps only to a real hit)
+  const jump = $derived(chips.filter(c => c.kind === "content" || c.kind === "text").map(c => c.value).join(" ") || (chips.find(c => c.kind === "person" || c.kind === "place")?.label ?? ""));
   function setSort(s: "best" | "date") { if (sort === s) return; sort = s; run(q, chips); }
   function remove(c: Chip) {
     const rest = chips.filter(x => x !== c);
@@ -106,10 +151,10 @@
   {#if note === "loading"}<p class="msg quiet" role="status">Die Bildsuche lädt noch. Bis dahin zählen nur Namen, Orte, Daten und Text.</p>{/if}
   {#if note === "failed"}<p class="msg quiet" role="status">Die Bildsuche ist gerade nicht erreichbar. Namen, Orte, Daten und Text gelten trotzdem.</p>{/if}
   {#if out}
-    {#if out.docs?.length}
+    {#if out.docs?.length && !asDays}
       <section class="files" aria-label="Dateien">
         <h2>Dateien</h2>
-        <div class="strip">{#each out.docs as d (d.id)}<div class="dc"><DocCard doc={d} /></div>{/each}</div>
+        <div class="strip">{#each out.docs as d (d.id)}<div class="dc"><DocCard doc={d} find={jump} /></div>{/each}</div>
       </section>
     {/if}
     <section aria-label="Treffer">
@@ -120,7 +165,11 @@
           <button type="button" aria-pressed={sort === "date"} onclick={() => setSort("date")}>Nach Datum</button>
         </div>
       </div>
-      {#if !items.length}<p class="msg">{out.docs?.length ? "Dazu hat Monet keine Fotos gefunden." : "Dazu hat Monet nichts gefunden."}</p>
+      {#if asDays}
+        {#if !shownDays.length}<p class="msg">Dazu hat Monet nichts gefunden.</p>{/if}
+        <div class:tlwrap={!app.wide}><Timeline bind:this={t} days={shownDays} wide={app.wide} {onpos} onend={() => loadMore()} open={stacks.open} onstack={openStack} onfold={closeStack} /></div>
+        {#if !app.wide && band.loaded && band.months.length}<Band vertical />{/if}
+      {:else if !items.length}<p class="msg">{out.docs?.length ? "Dazu hat Monet keine Fotos gefunden." : "Dazu hat Monet nichts gefunden."}</p>
       {:else if app.wide}
         <div class="rows">{#each wideRows as r}<div class="row" style="height:{r.h}px">{#each r.tiles as t}<div style="width:{t.w}px;height:{r.h}px"><Tile item={items[t.i]} sizes="{Math.round(t.w)}px" /></div>{/each}</div>{/each}</div>
       {:else}
@@ -190,6 +239,7 @@
   .grid > div { aspect-ratio: 1; min-width: 0; }
   .grid > .hero { grid-column: span 2; grid-row: span 2; }
   .rows { display: flex; flex-direction: column; gap: 4px; } .row { display: flex; gap: 4px; } .row > div { flex: none; }
+  .tlwrap { padding-right: 22px; }
   .msg { padding: 14px; } .quiet { color: var(--muted); font-size: 13px; padding: 0 14px 10px; } .w .msg { padding-left: 0; }
   .files h2 { font-size: 22px; padding: 0 14px 8px; } .w .files h2 { padding-left: 0; }
   .strip { display: flex; gap: 12px; overflow-x: auto; padding: 0 14px 14px; align-items: flex-start; } .w .strip { padding-left: 0; }

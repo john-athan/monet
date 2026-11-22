@@ -17,7 +17,7 @@
   import Mentioned from "../components/Mentioned.svelte";
 </script>
 <PageHead title={place?.name ?? "Ort"} room="--garten" sub={items ? count(items.length, "Foto", "Fotos") : ""} />
-<Mentioned kind="place" {id} />
+<Mentioned kind="place" {id} name={place?.name ?? ""} />
 <div class="p">
   <Link href="/orte" class="back">Alle Orte</Link>
   {#if error}<p class="m" role="alert">{error}</p>{:else if !items}<Loading />{:else if !items.length}<p class="m">Hier ist noch kein Foto.</p>{:else}<Grid {items} />{/if}

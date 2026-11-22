@@ -59,7 +59,9 @@ export async function metaDate(format: string, path: string, tags?: Record<strin
 
 export type DocDated = { takenAt: number; src: DocDateSrc };
 /** The fallback chain. `modifiedAt` is the client's mtime (docs keep it as modified_at, upload time when it had none). */
-export function chooseDocDate(o: { meta: number | null; name: string | null; text: string | null; modifiedAt: number; uploadedAt: number; kind: string }): DocDated {
+export function chooseDocDate(o: { meta: number | null; name: string | null; text: string | null; modifiedAt: number; uploadedAt: number; kind: string; scan?: boolean }): DocDated {
+  // a scan's own date is the day it was scanned; the letter on it says when it was written
+  if (o.scan) { const t = textDate(o.text, o.uploadedAt); if (t != null) return { takenAt: t, src: "text" }; }
   if (plausible(o.meta, o.uploadedAt)) return { takenAt: o.meta, src: "meta" };
   const n = o.name ? dateFromName(o.name)?.utc : null;
   if (plausible(n, o.uploadedAt)) return { takenAt: n, src: "name" };

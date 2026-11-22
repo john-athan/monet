@@ -69,8 +69,10 @@ export type ChipKind = "person" | "date" | "place" | "content" | "text";
 export interface Chip { kind: ChipKind; label: string; value: string }
 export interface ParseOut { chips: Chip[]; rest: string }
 /** everyone: search the whole household, not only the library being looked at */
-export interface SearchIn { chips: Chip[]; vec?: string; sort?: "best" | "date"; limit?: number; offset?: number; everyone?: boolean }
-export interface SearchOut { total: number; items: ItemSummary[]; relaxed: { label: string; count: number } | null; /** files whose title or text match the words (docs/files.md) */ docs: DocSummary[] }
+export interface SearchIn { chips: Chip[]; vec?: string; sort?: "best" | "date"; limit?: number; offset?: number; everyone?: boolean; /** also lay the page out as timeline days, newest first */ days?: boolean }
+export interface SearchOut { total: number; items: ItemSummary[]; relaxed: { label: string; count: number } | null; /** files whose title or text match the words (docs/files.md) */ docs: DocSummary[];
+  /** with `days`: this page's photos and the files of the same stretch, as timeline days */ days?: TimelineDay[];
+  /** with `days`, on the first page: the band over all hits */ band?: Band["months"] }
 
 /** What the image model recognised: one label, how many shown photos carry it, and the photo that carries it most clearly. */
 export interface ThingOut { label: string; count: number; item: number | null; /** files that carry the label (docs/together.md) */ docs: number; /** the file that carries it most clearly, when no photo does */ doc?: number }
