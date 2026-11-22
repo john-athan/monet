@@ -107,12 +107,16 @@ suite("sheets: CSV", () => {
     const hit = await j(await srv.fetch(`/api/docs?q=${q("zahn")}`, { cookie })); // prefix of a cell of the first sheet
     expect(hit.docs.map((d: any) => d.id)).toEqual([id]);
   }, T);
-  test("a file is not a sheet only because of its name: text with a NUL, an unknown extension and a plain zip are refused", async () => {
-    expect((await up(new Uint8Array([65, 0, 66]), "x.txt")).status).toBe(415);
-    expect((await up("%PDF-1.4 hallo", "x.exe")).status).toBe(415);
-    expect((await up("hallo", "x.html")).status).toBe(415);
-    const zipLike = new Uint8Array([0x50, 0x4b, 3, 4, ...new Uint8Array(100)]);
-    expect((await up(zipLike, "x.docx")).status).toBe(415);
+  test("a file is not a sheet only because of its name: text with a NUL, an unknown extension and a plain zip are kept as other files", async () => {
+    for (const [bytes, name, format, text] of [[new Uint8Array([65, 0, 66]), "x.txt", "txt", false], ["%PDF-1.4 hallo", "x.exe", "pdf", false], ["hallo", "x.html", "html", true],
+      [new Uint8Array([0x50, 0x4b, 3, 4, ...new Uint8Array(100)]), "x.docx", "docx", false]] as const) {
+      const r = await up(bytes, name);
+      expect(r.status).toBe(200);
+      const d = (await j(r)).doc;
+      if (name === "x.exe") expect(d).toMatchObject({ kind: "doc", format: "pdf" }); // the bytes decide
+      else expect(d).toMatchObject({ kind: "other", format, state: "ok" });
+      if (d.kind === "other") expect(d.text === true).toBe(text);
+    }
   });
 });
 

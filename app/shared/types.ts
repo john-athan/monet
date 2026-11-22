@@ -107,8 +107,9 @@ export interface Member { id: number; name: string; theme: Theme; count: number;
 export interface HouseholdOut { me: number; members: Member[] }
 
 /* ---------- files: documents, sheets, slides and the folders that hold everything (docs/files.md) ---------- */
-/** doc: text documents and most PDFs; sheet: spreadsheets and CSV; slides: presentations and landscape PDFs */
-export type DocKind = "doc" | "sheet" | "slides";
+/** doc: text documents and most PDFs; sheet: spreadsheets and CSV; slides: presentations and landscape PDFs;
+ *  book: EPUB; audio: music and recordings; other: any other file, kept and offered for download (or read as text) */
+export type DocKind = "doc" | "sheet" | "slides" | "book" | "audio" | "other";
 /** pending: the original is stored, the pages are still being made; failed: only the original can be downloaded */
 export type DocState = "pending" | "ok" | "failed";
 export interface DocSummary {
@@ -128,7 +129,15 @@ export interface DocSummary {
   folderId: number | null;
   /** set when the file belongs to another person than the library being looked at */
   owner?: number;
+  /** book: the author; audio: the artist (from the file's own tags) */
+  by?: string;
+  /** audio only, from the tags */
+  album?: string; track?: number; durationMs?: number;
+  /** other only: the file reads as text, the viewer shows it as such */
+  text?: boolean;
 }
+/** an EPUB: the reading order and the table of contents; href is a path inside the book, served at /media/doc/:id/book/<href> */
+export interface BookOut { spine: { href: string; title: string | null }[]; toc: { title: string; href: string; depth: number }[] }
 export interface DocDetail extends Omit<DocSummary, "owner"> {
   owner: number; sha256: string; mime: string; origName: string | null; uploadedAt: number;
   /** why rendering failed, in German, when state is 'failed' */

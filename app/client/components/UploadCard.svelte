@@ -17,7 +17,7 @@
     {:else}
       <p class="s tnum">{num(through)} von {num(up.total)} · {bytes(up.moved)} von {bytes(up.bytes)}</p>
       {#if up.now}<p class="s f">{up.now}</p>{/if}
-      {#if up.other}<p class="s">{num(up.other)} andere Dateien übersprungen</p>{/if}
+      {#if up.other}<p class="s">{num(up.other)} versteckte Dateien übersprungen</p>{/if}
     {/if}
   </div>
 {/if}

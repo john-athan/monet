@@ -200,13 +200,13 @@
   .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; padding: 0 14px; align-items: start; }
   .pgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 0 14px; }
   .ph { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 4px; }
-  [role=toolbar] { position: fixed; z-index: 25; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 20px; border-radius: 28px; background: var(--ink); color: var(--on-ink); box-shadow: var(--shadow); white-space: nowrap; max-width: calc(100vw - 16px); overflow-x: auto; }
+  [role=toolbar] { position: fixed; z-index: 25; left: 50%; bottom: calc(28px + var(--player-h, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 20px; border-radius: 28px; background: var(--ink); color: var(--on-ink); box-shadow: var(--shadow); white-space: nowrap; max-width: calc(100vw - 16px); overflow-x: auto; }
   .cnt { font-weight: 700; padding-right: 10px; }
   [role=toolbar] button { height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: transparent; color: var(--on-ink); font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
   [role=toolbar] button:hover:not(:disabled) { background: rgb(255 255 255 / .12); } [role=toolbar] button:disabled { opacity: .45; }
   [role=toolbar] button.x { width: 44px; padding: 0; justify-content: center; }
   @media (max-width: 899px) {
-    [role=toolbar] { bottom: calc(env(safe-area-inset-bottom) + 96px); padding-left: 14px; }
+    [role=toolbar] { bottom: calc(env(safe-area-inset-bottom) + 96px + var(--player-h, 0px)); padding-left: 14px; }
     [role=toolbar] button { padding: 0 10px; font-size: 0; gap: 0; width: 44px; justify-content: center; }
   }
   @media (min-width: 900px) {

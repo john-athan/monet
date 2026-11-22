@@ -143,7 +143,7 @@
     <span class="note tnum">
       {#if failed}<button type="button" class="again" onclick={retry}>Zeilen konnten nicht geladen werden. Nochmal versuchen</button>
       {:else if sheet.truncated}Zeigt die ersten {num(rows)} Zeilen
-      {:else if rows}{num(rows)} Zeilen, {num(cols)} Spalten{/if}
+      {:else if rows}{num(rows)} {rows === 1 ? "Zeile" : "Zeilen"}, {num(cols)} {cols === 1 ? "Spalte" : "Spalten"}{/if}
     </span>
   </div>
 </div>

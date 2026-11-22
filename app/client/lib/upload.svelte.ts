@@ -9,8 +9,7 @@ import { toast, viewing, member, genitive, go } from "./state.svelte";
 export const CHUNK = 16 * 1024 * 1024;
 const CHUNK_WAIT = 5 * 60_000;
 const PARALLEL = 2;
-// documents, sheets and slides (docs/files.md): the server checks the bytes, the name only has to be one of these
-const DOCS = /\.(pdf|docx?|odt|rtf|pages|txt|md|markdown|tex|xlsx|xlsm|xls|ods|numbers|csv|tsv|pptx?|odp|key)$/i;
+// every file that is not hidden goes up (docs/files.md): the server checks the bytes and files what it cannot show under "other"
 const MEDIA = /\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|dng|cr2|nef|arw|mp4|mov|m4v|webm|3gp|mkv|avi)$/i;
 
 /** `reading`: a folder is being listed (the picker closed, no files yet). `bytes`/`moved`: the whole import and how much
@@ -34,14 +33,14 @@ export const busy = () => up.reading || (up.total > 0 && up.done + up.skipped + 
 const hidden = (f: File) => f.name.startsWith(".") || f.name.startsWith("~$") || pathOf(f).includes("__MACOSX/");
 /** A photo or video by type or name. Hidden files are not: macOS writes `._name.jpg` beside every file on an external drive. */
 export const isMedia = (f: File) => !hidden(f) && (f.type.startsWith("image/") || f.type.startsWith("video/") || MEDIA.test(f.name));
-/** A document, sheet or presentation by its name (Office writes `~$name.docx` while a file is open). */
-export const isDoc = (f: File) => !hidden(f) && DOCS.test(f.name);
+/** Any file that is not hidden and not a photo or video: documents, books, audio, anything (Office writes `~$name.docx` while a file is open). */
+export const isDoc = (f: File) => !hidden(f) && !isMedia(f);
 
 /** Queues files for the library `of` (null: your own; default: the library on screen). */
 export function addFiles(files: File[], of: number | null = viewing(), into: number | null = dest.into) {
   up.reading = false;
-  const take = files.filter(f => isMedia(f) || isDoc(f)), other = files.length - take.length;
-  if (!take.length) { toast("Darunter war kein Foto, kein Video und kein Dokument."); return; }
+  const take = files.filter(f => !hidden(f)), other = files.length - take.length;
+  if (!take.length) { toast("Darunter war keine Datei, die Monet importieren kann."); return; }
   if (up.done + up.skipped + up.failed >= up.total && !up.active) {
     Object.assign(up, { total: 0, done: 0, skipped: 0, failed: 0, refused: 0, other: 0, docs: 0, bytes: 0, moved: 0 }); through = 0; target = of; mixed = false;
   } else if (of !== target) mixed = true;

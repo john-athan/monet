@@ -4,11 +4,11 @@
   import { parseMarkdown, type Block, type Inline } from "../lib/markdown";
   import { num } from "../lib/format";
   import Loading from "./Loading.svelte";
-  let { detail }: { detail: DocDetail } = $props();
+  let { detail, plain = false }: { detail: DocDetail; /** monospace, wrapped, whatever the format (other files) */ plain?: boolean } = $props();
 
   const CAP = 1_500_000;
   let text = $state<string | null>(null), error = $state(""), cut = $state(false);
-  const md = $derived(detail.format === "md" || detail.format === "markdown");
+  const md = $derived(!plain && (detail.format === "md" || detail.format === "markdown"));
   const blocks = $derived(md && text !== null ? parseMarkdown(text) : []);
 
   $effect(() => {

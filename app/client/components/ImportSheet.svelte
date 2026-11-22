@@ -12,7 +12,7 @@
   const pick = (i?: HTMLInputElement) => { i?.click(); open = false; waiting = true; addEventListener("focus", () => { if (waiting) up.reading = true; }, { once: true }); };
   const drop = () => { waiting = false; up.reading = false; };
 </script>
-<input bind:this={files} type="file" multiple accept="image/*,video/*,.heic,.heif,.dng,.pdf,.doc,.docx,.odt,.rtf,.pages,.txt,.md,.markdown,.tex,.xls,.xlsx,.xlsm,.ods,.numbers,.csv,.tsv,.ppt,.pptx,.odp,.key" hidden onchange={take} oncancel={drop} />
+<input bind:this={files} type="file" multiple hidden onchange={take} oncancel={drop} />
 <input bind:this={dir} type="file" multiple hidden onchange={take} oncancel={drop} {...{ webkitdirectory: "" } as any} />
 <Sheet bind:open label="Importieren">
   <h2>Importieren</h2>

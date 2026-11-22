@@ -33,7 +33,8 @@ const SECURITY: Record<string, string> = {
   // Everything the page loads is same-origin, so require-corp costs nothing.
   "cross-origin-opener-policy": "same-origin", "cross-origin-embedder-policy": "require-corp",
 };
-function secure(r: Response): Response { for (const [k, v] of Object.entries(SECURITY)) r.headers.set(k, v); return r; }
+// a handler that sets its own content-security-policy (the pages of a book) keeps it: only a missing one gets the global policy
+function secure(r: Response): Response { for (const [k, v] of Object.entries(SECURITY)) if (k !== "content-security-policy" || !r.headers.has(k)) r.headers.set(k, v); return r; }
 
 /* ---------- small helpers ---------- */
 type Ctx = { req: Request; url: URL; p: Principal | null; m: RegExpExecArray; ip: string };
@@ -128,6 +129,40 @@ async function mediaDoc(c: Ctx): Promise<Response> {
   }
   const page = await docs.pageFile(d, what as "p" | "t", Number(c.m[3]));
   return page ? fileResponse(c.req, page, "image/webp", `"${d.sha256}-${what}${c.m[3]}"`) : fail(404, "Diese Seite gibt es nicht.");
+}
+
+/* ---------- the pages of a book ---------- */
+// no script, no frame, nothing from outside: the reader puts them in <iframe sandbox="allow-same-origin"> (docs/files.md)
+const BOOK_CSP = "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'";
+const BOOK_STYLE = "<style>html{max-width:42rem;margin:0 auto;padding:1rem;color-scheme:light dark}img,svg,video{max-width:100%;height:auto}</style>";
+const BOOK_MIME: Record<string, string> = {
+  xhtml: "application/xhtml+xml; charset=utf-8", html: "text/html; charset=utf-8", htm: "text/html; charset=utf-8", css: "text/css; charset=utf-8",
+  svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+  woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
+};
+/** The style goes before </head>; a page without one gets it after its <body> tag, else in front (after an XML declaration). */
+function injectStyle(html: string): string {
+  const h = /<\/head\s*>/i.exec(html);
+  if (h) return html.slice(0, h.index) + BOOK_STYLE + html.slice(h.index);
+  const b = /<body\b[^>]*>/i.exec(html);
+  if (b) return html.slice(0, b.index + b[0].length) + BOOK_STYLE + html.slice(b.index + b[0].length);
+  const x = /^\s*<\?xml[^>]*\?>/i.exec(html);
+  return x ? html.slice(0, x[0].length) + BOOK_STYLE + html.slice(x[0].length) : BOOK_STYLE + html;
+}
+function mediaBook(c: Ctx): Response {
+  browser(c.p);
+  const d = docs.rowById(id(c.m[1]));
+  if (!d || d.kind !== "book" || d.state !== "ok") return fail(404, "Das gibt es nicht (mehr).");
+  const e = docs.bookEntry(d, c.m[2]);
+  if (!e) return fail(404, "Das gibt es nicht.");
+  const ext = e.name.slice(e.name.lastIndexOf(".") + 1).toLowerCase(), type = BOOK_MIME[ext] ?? "application/octet-stream";
+  const etag = `"${d.sha256}-b${Bun.hash(e.name).toString(36)}"`;
+  const markup = ext === "xhtml" || ext === "html" || ext === "htm", active = markup || ext === "svg";
+  const h: Record<string, string> = { "content-type": type, etag, "cache-control": IMMUTABLE, ...(active ? { "content-security-policy": BOOK_CSP } : {}) };
+  if (c.req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: h });
+  const bytes = e.read();
+  if (!bytes) return fail(404, "Das gibt es nicht.");
+  return new Response(markup ? injectStyle(new TextDecoder().decode(bytes)) : bytes, { headers: h });
 }
 
 /* ---------- static client and models ---------- */
@@ -236,6 +271,18 @@ route("GET", "/api/docs/(\\d+)/sheet/(\\d+)", async c => {
   const d = docs.rowById(id(c.m[1])), q = c.url.searchParams;
   if (!d) return fail(404, "Das gibt es nicht (mehr).");
   return J(await docs.sheetRows(d, Number(c.m[2]), Number(q.get("from") ?? 0), q.has("n") ? Number(q.get("n")) : 200));
+});
+route("GET", "/api/docs/(\\d+)/book", c => {
+  browser(c.p);
+  const d = docs.rowById(id(c.m[1])), b = d && d.kind === "book" && d.state === "ok" ? docs.bookOf(d) : null;
+  return b ? J(b) : fail(404, "Das gibt es nicht (mehr).");
+});
+route("GET", "/media/doc/(\\d+)/book/(.+)", mediaBook);
+route("GET", "/media/doc/(\\d+)/play", c => {
+  browser(c.p);
+  const d = docs.rowById(id(c.m[1]));
+  if (!d || d.kind !== "audio") return fail(404, "Das gibt es nicht (mehr).");
+  return fileResponse(c.req, join(ORIGINALS, d.orig_path), d.mime, `"${d.sha256}-o"`, IMMUTABLE, { "content-disposition": "inline" });
 });
 route("GET", "/media/doc/(\\d+)/(c|o|text)", mediaDoc);
 route("GET", "/media/doc/(\\d+)/(p|t)/(\\d+)", mediaDoc);

@@ -6,6 +6,8 @@
   import { transition, sunOrigin } from "./lib/motion";
   import Shell from "./components/Shell.svelte";
   import Toast from "./components/Toast.svelte";
+  import PlayerBar from "./components/PlayerBar.svelte";
+  import { close as closePlayer } from "./lib/player.svelte";
   import Welcome from "./pages/Welcome.svelte";
   import Fotos from "./pages/Fotos.svelte";
   import Suche from "./pages/Suche.svelte";
@@ -23,6 +25,8 @@
   import Ablage from "./pages/Ablage.svelte";
   import Dateien from "./pages/Dateien.svelte";
   import Datei from "./pages/Datei.svelte";
+  import Buecher from "./pages/Buecher.svelte";
+  import AudioList from "./pages/Audio.svelte";
 
   const route = $derived.by(() => {
     const p = local();
@@ -46,10 +50,12 @@
     if (p === "/dokumente") return { name: "dokumente" };
     if (p === "/tabellen") return { name: "tabellen" };
     if (p === "/praesentationen") return { name: "praesentationen" };
+    if (p === "/buecher") return { name: "buecher" };
+    if (p === "/audio") return { name: "audio" };
     if ((m = /^\/datei\/(\d+)$/.exec(p))) return { name: "datei", id: Number(m[1]) };
     return { name: "fotos" };
   });
-  const TITLES: Record<string, string> = { setup: "Einrichten", login: "Anmelden", fotos: "Fotos", suche: "Suche", foto: "Foto", personen: "Personen", person: "Person", dinge: "Dinge", orte: "Orte", ort: "Ort", alben: "Alben", album: "Album", serie: "Serie", geraete: "Geräte und Sicherung", haushalt: "Haushalt", ablage: "Ablage", dokumente: "Dokumente", tabellen: "Tabellen", praesentationen: "Präsentationen", datei: "Datei" };
+  const TITLES: Record<string, string> = { setup: "Einrichten", login: "Anmelden", fotos: "Fotos", suche: "Suche", foto: "Foto", personen: "Personen", person: "Person", dinge: "Dinge", orte: "Orte", ort: "Ort", alben: "Alben", album: "Album", serie: "Serie", geraete: "Geräte und Sicherung", haushalt: "Haushalt", ablage: "Ablage", dokumente: "Dokumente", tabellen: "Tabellen", praesentationen: "Präsentationen", buecher: "Bücher", audio: "Audio", datei: "Datei" };
   $effect(() => { document.title = `${TITLES[route.name]} · ${themeOf(theme()).brand}`; });
   // a change of light washes over the page from where the sun stands, like the next canvas of a series
   let lit = "";
@@ -100,6 +106,8 @@
   let dark = false;
   $effect(() => { if (app.loggedIn && app.wide && !dark) { dark = true; startDarkroom(); } });
   $effect(() => { if (app.indexer && !dark) { dark = true; startDarkroom({ alwaysOn: true }); } });
+  // signed out: the music stops
+  $effect(() => { if (app.ready && !app.loggedIn) closePlayer(); });
   const bare = $derived(route.name === "foto" || route.name === "datei" || route.name === "geraete" || route.name === "haushalt");
 </script>
 
@@ -130,9 +138,12 @@
     {:else if route.name === "dokumente"}<Dateien kind="doc" />
     {:else if route.name === "tabellen"}<Dateien kind="sheet" />
     {:else if route.name === "praesentationen"}<Dateien kind="slides" />
+    {:else if route.name === "buecher"}<Buecher />
+    {:else if route.name === "audio"}<AudioList />
     {:else if route.name === "datei"}{#key route.id}<Datei id={route.id!} />{/key}{/if}
     {/key}
   </Shell>
+  <PlayerBar {bare} />
 {/if}
 <Toast />
 <style>

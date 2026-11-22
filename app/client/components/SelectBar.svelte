@@ -27,14 +27,14 @@
 {/if}
 <AlbumSheet bind:open={album} {ids} />
 <style>
-  [role=toolbar] { position: fixed; z-index: 25; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 20px; border-radius: 28px; background: var(--ink); color: var(--on-ink); box-shadow: var(--shadow); white-space: nowrap; max-width: calc(100vw - 16px); overflow-x: auto; }
+  [role=toolbar] { position: fixed; z-index: 25; left: 50%; bottom: calc(28px + var(--player-h, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 20px; border-radius: 28px; background: var(--ink); color: var(--on-ink); box-shadow: var(--shadow); white-space: nowrap; max-width: calc(100vw - 16px); overflow-x: auto; }
   .n { font-weight: 700; padding-right: 10px; }
   button { height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: transparent; color: var(--on-ink); font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
   button:hover:not(:disabled) { background: rgb(255 255 255 / .12); }
   button:disabled { opacity: .45; }
   button.x { width: 44px; padding: 0; justify-content: center; }
   @media (max-width: 899px) {
-    [role=toolbar] { bottom: calc(env(safe-area-inset-bottom) + 96px); padding-left: 14px; }
+    [role=toolbar] { bottom: calc(env(safe-area-inset-bottom) + 96px + var(--player-h, 0px)); padding-left: 14px; }
     button { padding: 0 10px; font-size: 0; gap: 0; width: 44px; justify-content: center; } /* icons only: the labels stay in the accessibility tree through the buttons' text */
     button.x { width: 44px; }
   }

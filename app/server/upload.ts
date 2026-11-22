@@ -4,7 +4,7 @@
 import { closeSync, existsSync, ftruncateSync, mkdirSync, openSync, readdirSync, readSync, rmSync, statSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import { db } from "./db";
-import { docCandidate, isTextName, sniffDoc, type DocType } from "./docsniff";
+import { isTextName, sniffAudio, sniffDoc, sniffKnown, type DocType } from "./docsniff";
 import { ingestDoc, summaryById as docById } from "./docs";
 import { ensurePath } from "./folders";
 import { DATA, ingest, SOURCES, sniff } from "./ingest";
@@ -55,11 +55,11 @@ function head(path: string, n = 32): Uint8Array {
   const fd = openSync(path, "r"); const b = new Uint8Array(n);
   try { const got = readSync(fd, b, 0, n, 0); return b.slice(0, got); } finally { closeSync(fd); }
 }
-/** The final decision whether a whole file is a document: the head and the zip directory are read from where they lie. */
-function sniffDocFile(path: string, name: string | null): DocType | null {
+/** The final decision what file this is (known format, else 'other' unless `known`): the head and the zip directory are read from where they lie. */
+function sniffDocFile(path: string, name: string | null, known = false): DocType | null {
   const fd = openSync(path, "r");
   try {
-    return sniffDoc({ size: statSync(path).size, read: (off, len) => { const b = new Uint8Array(len); return b.subarray(0, readSync(fd, b, 0, len, off)); } }, name);
+    return (known ? sniffKnown : sniffDoc)({ size: statSync(path).size, read: (off, len) => { const b = new Uint8Array(len); return b.subarray(0, readSync(fd, b, 0, len, off)); } }, name);
   } finally { closeSync(fd); }
 }
 /** folder= (a path below in=) and in= (a folder id) of an upload: undefined when the client named neither, else the folder
@@ -127,9 +127,7 @@ export async function putChunk(req: Request, p: Principal, sha: string): Promise
     } finally { closeSync(fd); }
     if (wrote !== len) { return fail(409, "Der Block war unvollständig.", { received: statSync(part).size }); }
     const size = have + wrote;
-    // refuse unknown formats at the first chunk, before gigabytes arrive
-    // (photos and videos by their magic bytes; a document candidate is decided at the last chunk, when the whole file is there)
-    if (offset === 0 && !sniff(head(part)) && !docCandidate(head(part, 65536), url.searchParams.get("name"))) { rmSync(part, { force: true }); return fail(415, "Dieses Dateiformat wird nicht unterstützt."); }
+    // every format is kept now: nothing is refused at the first chunk, the last one decides what the file is
     if (size < total) return J({ received: size });
     return await finish(p, sha, part, size, url);
   } catch (e) {
@@ -149,11 +147,13 @@ async function finish(p: Principal, sha: string, part: string, size: number, url
   const actual = await sha256File(part);
   if (actual !== sha) { rmSync(part, { force: true }); return fail(422, "Die Prüfsumme stimmt nicht. Bitte noch einmal hochladen.", { received: 0 }); }
   const name = url.searchParams.get("name"), mtime = Number(url.searchParams.get("mtime"));
-  // a name that only text can carry wins over picture-like first bytes (a note that starts with "GIF")
-  let doc = isTextName(name) ? sniffDocFile(part, name) : null;
+  // a name that only text can carry wins over picture-like first bytes (a note that starts with "GIF"); audio is looked at
+  // before the video rule, which would take every ftyp (M4A, M4B)
+  let doc = isTextName(name) ? sniffDocFile(part, name, true) : null;
+  doc ??= sniffAudio(head(part, 64), name);
   const sniffed = doc ? null : sniff(head(part));
   if (!sniffed && !doc) doc = sniffDocFile(part, name);
-  if (!sniffed && !doc) { rmSync(part, { force: true }); return fail(415, "Dieses Dateiformat wird nicht unterstützt."); }
+  if (!sniffed && !doc) { rmSync(part, { force: true }); return fail(400, "Die Datei ist leer."); }
   const dev = p.deviceId != null ? (db.query("SELECT kind FROM auth_device WHERE id = ?").get(p.deviceId) as { kind: string } | null) : null;
   const wanted = url.searchParams.get("source") ?? "web";
   // a device cannot claim to be another kind of source (the Takeout importer runs on a device token and says so)

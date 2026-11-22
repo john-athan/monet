@@ -41,10 +41,10 @@
 <ImportSheet bind:open={importing} />
 <UploadCard />
 <style>
-  .body { display: flex; align-items: flex-start; gap: 8px; padding: 6px 14px 120px; }
+  .body { display: flex; align-items: flex-start; gap: 8px; padding: 6px 14px calc(120px + var(--player-h, 0px)); }
   .side { flex: 1 1 220px; max-width: 232px; min-width: 200px; }
   main { flex: 999 1 560px; min-width: 0; }
-  main.phone { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
+  main.phone { padding-bottom: calc(82px + env(safe-area-inset-bottom) + var(--player-h, 0px)); }
   .visit { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; margin: 0 0 10px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule); font-size: 13.5px; color: var(--muted); }
   .visit b { color: var(--ink); font-weight: 650; }
   .phone .visit { margin: 10px 14px 0; }

@@ -20,8 +20,9 @@ One Bun process, one SQLite file (WAL), system tools for pixels. Bun built-ins a
 | `server/people.ts`, `cluster.ts` | faces, incremental clustering, people list, merge, crops (cluster.ts is pure) |
 | `server/search.ts`, `parse.ts` | image vector matrix, labels, search and relaxed search (parse.ts is pure) |
 | `server/fts.ts` | the one FTS5 row of an item |
-| `server/docsniff.ts` | which document format a file is (magic bytes, zip directory, text rule), text decoding, CSV, the sheet grid caps and cover SVG (pure) |
-| `server/docs.ts` | files: the row of an upload, the render queue (soffice, vips, pdftotext), pages on demand, sheets, covers, text, list, search, rename, soft delete, purge |
+| `server/docsniff.ts` | which format a file is (magic bytes, zip directory, audio and EPUB, the text rule; the rest is `other`), zip entry reader, text decoding, streaming CSV, the sheet grid caps and cover SVG (pure) |
+| `server/epub.ts` | EPUB: container, OPF, spine, nav or NCX table of contents, author, cover, search text (pure, reads a `DocSource`) |
+| `server/docs.ts` | files: the row of an upload, the render queue (soffice from `MONET_SOFFICE`, vips, pdftotext, ffprobe, ffmpeg), pages on demand, sheets as NDJSON with an index, books and their entries, audio tags and covers, text, list, search, rename, soft delete, purge |
 | `server/folders.ts` | the Ablage: folder CRUD, `FolderOut`, move, `ensurePath` for uploads with `folder=` and `in=` |
 | `server/status.ts` | `/api/status`, export list and acknowledgement |
 | `tools/upload-dir.ts`, `import-takeout.ts`, `upload-lib.ts` | CLIs that speak the upload protocol |
@@ -35,7 +36,7 @@ One Bun process, one SQLite file (WAL), system tools for pixels. Bun built-ins a
 
 ## Upload and ingest
 
-`PUT /api/upload/<sha256>?offset&total&name&mtime&source` appends to `$MONET_DATA/up/<sha>.part`. An offset that differs from the size of the part is a 409 `{received}`; that is the whole resume protocol. The first chunk is sniffed (magic bytes, never the name): JPEG, PNG, GIF, WebP, TIFF, HEIC, AVIF and MP4/MOV/WebM are accepted, everything else is a 415 before gigabytes arrive. The last chunk triggers the SHA-256 check (a mismatch deletes the part: 422), then ingest, and the response is the finished `ItemSummary`.
+`PUT /api/upload/<sha256>?offset&total&name&mtime&source` appends to `$MONET_DATA/up/<sha>.part`. An offset that differs from the size of the part is a 409 `{received}`; that is the whole resume protocol. Nothing is refused by its type: photos and videos are sniffed by their magic bytes and keep their pipeline, everything else becomes a file (`docs/files.md`); only an empty file is a 400. The last chunk triggers the SHA-256 check (a mismatch deletes the part: 422), then ingest, and the response is the finished `ItemSummary`.
 
 Ingest order: dedupe, probe (`vipsheader -a` or `ffprobe`), choose the date (EXIF, file name, mtime, upload time), move the original to `yyyy/mm/<sha>.<ext>` (path stored in `item.orig_path`, because a sidecar can change `taken_at` later), insert the row with `thumbs_ok = 0`, then thumbnails (m, then s cut from m, then l), colours (k-means k=3 on a 16 px PPM), place, burst, FTS, `thumbs_ok = 1`. If the second half fails the row stays and the startup sweep runs it again.
 
@@ -48,7 +49,7 @@ Decisions:
 
 ## Files
 
-Documents, spreadsheets and presentations (view and organise only) and the one tree of folders beside the photos: `docs/files.md` is the contract, `server/docs.ts` and `server/folders.ts` implement it. Uploads use the same chunked route; the last chunk classifies the whole file (a text name wins over picture-like bytes) and answers `{doc}` instead of `{item}`. Rendering shares `ingest.enqueue` with the photo pipeline, so only one heavy job runs at a time.
+Documents, spreadsheets, presentations, books, audio and any other file (view and organise only) and the one tree of folders beside the photos: `docs/files.md` is the contract, `server/docs.ts` and `server/folders.ts` implement it. Uploads use the same chunked route; the last chunk classifies the whole file (a text name wins over picture-like bytes; audio is looked at before the video rule, which takes every ftyp) and answers `{doc}` instead of `{item}`. Rendering shares `ingest.enqueue` with the photo pipeline, so only one heavy job runs at a time.
 
 ## Auth
 

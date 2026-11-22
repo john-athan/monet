@@ -138,9 +138,9 @@
   .y { font-size: 11px; color: var(--muted); }
   .tlwrap { padding-right: 22px; }
   .empty { padding: 28px 18px; color: var(--muted); }
-  :global(.searchpill) { position: fixed; z-index: 15; left: 14px; right: 14px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 76px); height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-radius: 25px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow); color: var(--muted); font-size: 15px; }
-  .top { position: fixed; z-index: 16; right: 28px; bottom: 28px; width: 48px; height: 48px; display: grid; place-items: center; border: 0; border-radius: 24px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow); color: var(--ink); cursor: pointer; }
+  :global(.searchpill) { position: fixed; z-index: 15; left: 14px; right: 14px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 76px + var(--player-h, 0px)); height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-radius: 25px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow); color: var(--muted); font-size: 15px; }
+  .top { position: fixed; z-index: 16; right: 28px; bottom: calc(28px + var(--player-h, 0px)); width: 48px; height: 48px; display: grid; place-items: center; border: 0; border-radius: 24px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow); color: var(--ink); cursor: pointer; }
   .top:hover { box-shadow: inset 0 0 0 1.5px var(--water), var(--shadow); }
-  .top.phone { right: 26px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 136px); }
+  .top.phone { right: 26px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 136px + var(--player-h, 0px)); }
   :global(.searchpill:hover) { box-shadow: inset 0 0 0 1.5px var(--water), var(--shadow); }
 </style>

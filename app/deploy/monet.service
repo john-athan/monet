@@ -25,6 +25,8 @@ Environment=MONET_MODELS=/var/lib/monet/models
 Environment=MONET_GEONAMES=/var/lib/monet/geonames/cities15000.txt
 Environment=MONET_DIST=/usr/local/lib/monet/dist
 Environment=HOME=/var/lib/monet
+# LibreOffice 26.8 for documents, unpacked by deploy/setup.sh (docs/files.md)
+Environment=MONET_SOFFICE=/opt/monet-libreoffice/program/soffice
 # if MONET_ORIGINALS moves to a mount outside /var/lib/monet, list it here
 #ReadWritePaths=/mnt/monet-originals
 ExecStart=/usr/local/lib/monet/monet

@@ -87,6 +87,28 @@ const MIGRATIONS: string[] = [
    CREATE INDEX doc_pending ON doc(state) WHERE state = 'pending';
    -- rowid = doc.id
    CREATE VIRTUAL TABLE doc_fts USING fts5(title, text, tokenize='unicode61 remove_diacritics 2');`,
+  // books, audio and every other file (docs/files.md): the kind check widens, so the table is built again. Nothing
+  // references doc, and doc_fts keys on the id, which is copied. by_name: author of a book, artist of a track.
+  // is_text: an 'other' file that reads as text. book: JSON {spine, toc} of an EPUB.
+  `CREATE TABLE doc_new (
+     id INTEGER PRIMARY KEY, owner_id INTEGER NOT NULL REFERENCES owner(id), sha256 TEXT NOT NULL,
+     kind TEXT NOT NULL CHECK (kind IN ('doc','sheet','slides','book','audio','other')), format TEXT NOT NULL, mime TEXT NOT NULL, bytes INTEGER NOT NULL,
+     title TEXT NOT NULL, orig_name TEXT, folder_id INTEGER REFERENCES folder(id) ON DELETE SET NULL,
+     pages INTEGER, width REAL NOT NULL DEFAULT 0, height REAL NOT NULL DEFAULT 0,
+     modified_at INTEGER NOT NULL, uploaded_at INTEGER NOT NULL, source TEXT NOT NULL, device_id INTEGER, orig_path TEXT NOT NULL,
+     state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','ok','failed')), error TEXT, text TEXT,
+     sheets TEXT, deleted_at INTEGER,
+     by_name TEXT, album TEXT, track INTEGER, duration_ms INTEGER, is_text INTEGER NOT NULL DEFAULT 0, book TEXT,
+     UNIQUE (owner_id, sha256)) STRICT;
+   INSERT INTO doc_new (id, owner_id, sha256, kind, format, mime, bytes, title, orig_name, folder_id, pages, width, height, modified_at, uploaded_at,
+       source, device_id, orig_path, state, error, text, sheets, deleted_at)
+     SELECT id, owner_id, sha256, kind, format, mime, bytes, title, orig_name, folder_id, pages, width, height, modified_at, uploaded_at,
+       source, device_id, orig_path, state, error, text, sheets, deleted_at FROM doc;
+   DROP TABLE doc;
+   ALTER TABLE doc_new RENAME TO doc;
+   CREATE INDEX doc_kind ON doc(owner_id, kind, modified_at);
+   CREATE INDEX doc_folder ON doc(folder_id) WHERE folder_id IS NOT NULL;
+   CREATE INDEX doc_pending ON doc(state) WHERE state = 'pending';`,
 ];
 
 const version = (db.query("PRAGMA user_version").get() as { user_version: number }).user_version;

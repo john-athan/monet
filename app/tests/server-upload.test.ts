@@ -107,9 +107,10 @@ suite("upload", () => {
     expect(srv.db().query("SELECT taken_src FROM item WHERE id = ?").get(r.item.id)).toEqual({ taken_src: "upload" });
     expect(Math.abs(r.item.takenAt - Date.now())).toBeLessThan(60_000);
   });
-  test("files that are not photos or videos, empty files and oversized chunks are refused", async () => {
+  test("files that are not photos or videos are kept as files (no 415); empty files and oversized chunks are refused", async () => {
     const txt = new TextEncoder().encode("<html><script>alert(1)</script></html>");
-    expect((await put(sha(txt), txt, 0, txt.length)).status).toBe(415);
+    const r = await j(await put(sha(txt), txt, 0, txt.length, "&name=x.html"));
+    expect(r.doc).toMatchObject({ kind: "other", format: "html", state: "ok", text: true });
     expect((await srv.fetch(`/api/upload/${"e".repeat(64)}?offset=0&total=0`, { method: "PUT", cookie, body: new Uint8Array(0) })).status).toBe(400);
     const big = new Uint8Array(33 * 1024 * 1024); big[0] = 0xff; big[1] = 0xd8; big[2] = 0xff;
     expect((await srv.fetch(`/api/upload/${"f".repeat(64)}?offset=0&total=${big.length}`, { method: "PUT", cookie, body: big })).status).toBe(413);

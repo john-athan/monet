@@ -1,10 +1,11 @@
 <script lang="ts">
-  // One file: a document, a sheet or a presentation, for viewing only. It fills the screen like a photo does; the
-  // header carries the title and what you can do with the file, the body is one of four viewers.
+  // One file, for viewing only. It fills the screen like a photo does; the header carries the title and what you can do
+  // with the file, the body is one of the viewers: pages, slides, sheet, book, audio, text, or a download panel.
   import type { DocDetail, DocKind } from "../../shared/types";
+  import { KINDS, fileSign } from "../lib/files.svelte";
   import { api, post } from "../lib/api";
   import { go, toast, house } from "../lib/state.svelte";
-  import { bytes, fullDate, num } from "../lib/format";
+  import { bytes, duration, fullDate, num } from "../lib/format";
   import Icon from "../components/Icon.svelte";
   import Link from "../components/Link.svelte";
   import Loading from "../components/Loading.svelte";
@@ -12,6 +13,8 @@
   import SlideView from "../components/SlideView.svelte";
   import SheetGrid from "../components/SheetGrid.svelte";
   import TextView from "../components/TextView.svelte";
+  import BookReader from "../components/BookReader.svelte";
+  import AudioView from "../components/AudioView.svelte";
   import MoveSheet from "../components/MoveSheet.svelte";
   import { app } from "../lib/state.svelte";
   let { id }: { id: number } = $props();
@@ -21,7 +24,7 @@
   const mine = $derived(!!d && house.me > 0 && d.owner === house.me);
   const TEXT = ["txt", "md", "markdown", "tex"];
   const textual = $derived(!!d && d.kind === "doc" && TEXT.includes(d.format));
-  const LIST: Record<DocKind, string> = { doc: "/dokumente", sheet: "/tabellen", slides: "/praesentationen" };
+  const LIST = $derived(d ? (d.kind === "other" && d.folderId != null ? `/ablage/${d.folderId}` : KINDS[d.kind].path) : "/ablage");
 
   async function load(quiet = false) {
     const my = id;
@@ -44,7 +47,7 @@
   });
 
   // back: where you came from, else the list of its kind
-  const back = () => (history.length > 1 ? history.back() : go(d ? LIST[d.kind] : "/ablage"));
+  const back = () => (history.length > 1 ? history.back() : go(LIST));
 
   async function remove() {
     if (!d || !mine) return;
@@ -66,12 +69,13 @@
     addEventListener("keydown", k, true); return () => removeEventListener("keydown", k, true);
   });
 
-  const KIND: Record<DocKind, string> = { doc: "Dokument", sheet: "Tabelle", slides: "Präsentation" };
+  const KIND: Record<DocKind, string> = { doc: "Dokument", sheet: "Tabelle", slides: "Präsentation", book: "Buch", audio: "Audio", other: "Datei" };
   const amount = $derived.by(() => {
     if (!d) return "";
     if (d.kind === "sheet") return d.sheets.length ? `${num(d.sheets.length)} ${d.sheets.length === 1 ? "Blatt" : "Blätter"}` : "";
+    if (d.kind === "audio" || d.kind === "other") return "";
     if (d.pages == null) return "";
-    const one = d.kind === "slides" ? "Folie" : "Seite", many = d.kind === "slides" ? "Folien" : "Seiten";
+    const one = d.kind === "slides" ? "Folie" : d.kind === "book" ? "Kapitel" : "Seite", many = d.kind === "slides" ? "Folien" : d.kind === "book" ? "Kapitel" : "Seiten";
     return `${num(d.pages)} ${d.pages === 1 ? one : many}`;
   });
 </script>
@@ -98,9 +102,12 @@
   {#if d && details}
     <section id="datei-details" class="details" aria-label="Details zur Datei">
       <dl class="tnum">
-        <dt>Format</dt><dd>{d.format.toUpperCase()}, {KIND[d.kind]}</dd>
+        <dt>Format</dt><dd>{fileSign(d.format)}, {KIND[d.kind]}</dd>
+        {#if d.by}<dt>{d.kind === "book" ? "Autor" : "Künstler"}</dt><dd>{d.by}</dd>{/if}
+        {#if d.album}<dt>Album</dt><dd>{d.album}</dd>{/if}
+        {#if d.durationMs}<dt>Dauer</dt><dd>{duration(d.durationMs)}</dd>{/if}
         <dt>Größe</dt><dd>{bytes(d.bytes)}</dd>
-        {#if amount}<dt>{d.kind === "sheet" ? "Blätter" : d.kind === "slides" ? "Folien" : "Seiten"}</dt><dd>{amount}</dd>{/if}
+        {#if amount}<dt>{d.kind === "sheet" ? "Blätter" : d.kind === "slides" ? "Folien" : d.kind === "book" ? "Kapitel" : "Seiten"}</dt><dd>{amount}</dd>{/if}
         <dt>Geändert</dt><dd>{fullDate(d.modifiedAt)}</dd>
         <dt>Ordner</dt>
         <dd class="path">
@@ -124,6 +131,20 @@
         <p class="m">{d.error ?? "Diese Datei konnte nicht aufbereitet werden."}</p>
         <a class="main" href="/media/doc/{id}/o" download><Icon name="herunterladen" size={20} sw={1.9} />Original herunterladen</a>
       </div>
+    {:else if d.kind === "book"}
+      {#key d.id}<BookReader detail={d} />{/key}
+    {:else if d.kind === "audio"}
+      <AudioView detail={d} />
+    {:else if d.kind === "other"}
+      {#if d.text}
+        <TextView detail={d} plain />
+      {:else}
+        <div class="msg" role="status">
+          <p class="big">Diese Datei kann Monet nicht anzeigen.</p>
+          <p class="m tnum">{fileSign(d.format)} · {bytes(d.bytes)}</p>
+          <a class="main" href="/media/doc/{id}/o" download><Icon name="herunterladen" size={20} sw={1.9} />Herunterladen</a>
+        </div>
+      {/if}
     {:else if d.kind === "sheet"}
       <SheetGrid detail={d} />
     {:else if d.kind === "slides"}
@@ -141,7 +162,7 @@
 {/if}
 
 <style>
-  .datei { position: fixed; inset: 0; z-index: 25; display: flex; flex-direction: column; background: var(--ground); min-width: 0; }
+  .datei { position: fixed; inset: 0; box-sizing: border-box; padding-bottom: var(--player-h, 0px); z-index: 25; display: flex; flex-direction: column; background: var(--ground); min-width: 0; }
   header { flex: none; display: flex; align-items: center; gap: 8px; min-height: 60px; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; background: var(--surface); border-bottom: 1px solid var(--rule); }
   h1 { flex: 1; min-width: 0; font-size: 21px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .wide h1 { font-size: 24px; }

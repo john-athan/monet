@@ -8,6 +8,10 @@ export const KINDS = {
   doc: { path: "/dokumente", title: "Dokumente", one: "Dokument", room: "--esszimmer", icon: "dokumente" },
   sheet: { path: "/tabellen", title: "Tabellen", one: "Tabelle", room: "--garten", icon: "tabellen" },
   slides: { path: "/praesentationen", title: "Präsentationen", one: "Präsentation", room: "--seerosen", icon: "praesentationen" },
+  book: { path: "/buecher", title: "Bücher", one: "Buch", room: "--atelier", icon: "buecher" },
+  audio: { path: "/audio", title: "Audio", one: "Titel", room: "--teich", icon: "audio" },
+  // no list of its own: other files live in the Ablage
+  other: { path: "/ablage", title: "Dateien", one: "Datei", room: "--water", icon: "ablage" },
 } as const satisfies Record<DocKind, { path: string; title: string; one: string; room: string; icon: string }>;
 
 const SIGNS: Record<string, string> = { numbers: "NUM", markdown: "MD" };
@@ -30,14 +34,14 @@ export function onUploaded(fn: () => void) {
 
 /** One list of files by kind, newest first, paged by `next`. A new `q` or `reload` starts again; an answer that
  * arrives after another one was asked for is dropped. */
-export function docList(kind: DocKind) {
+export function docList(kind: DocKind, limit = 48) {
   const s = $state({ docs: [] as DocSummary[], next: null as string | null, loading: false, loaded: false, error: "", q: "" });
   let seq = 0;
   async function fetchPage(cursor: string | null) {
     const my = ++seq;
     s.loading = true; s.error = "";
     try {
-      const r = await api<DocList>(`/api/docs?kind=${kind}&limit=48${s.q ? `&q=${encodeURIComponent(s.q)}` : ""}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+      const r = await api<DocList>(`/api/docs?kind=${kind}&limit=${limit}${s.q ? `&q=${encodeURIComponent(s.q)}` : ""}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
       if (my !== seq) return;
       s.docs = cursor ? [...s.docs, ...r.docs.filter(d => !s.docs.some(o => o.id === d.id))] : r.docs;
       s.next = r.next; s.loaded = true;
@@ -62,3 +66,40 @@ export const deleteFolder = (id: number) => api(`/api/folders/${id}`, { method: 
 export const moveTo = (into: number | null, what: Omit<MoveIn, "into">) => post("/api/move", { into, ...what } satisfies MoveIn);
 export const deleteDoc = (id: number) => api(`/api/docs/${id}`, { method: "DELETE" });
 export const restoreDoc = (id: number) => post(`/api/docs/${id}/restore`);
+
+/** Whether a book or track has a cover picture to ask for (w and h stay 0 until one was made). */
+export const hasCover = (d: DocSummary) => d.state === "ok" && d.w > 0 && d.h > 0;
+
+const collator = new Intl.Collator("de", { numeric: true, sensitivity: "base" });
+/** Tracks in album order: track number first (none last), then title. */
+export const byTrack = (a: DocSummary, b: DocSummary) => (a.track ?? 1e9) - (b.track ?? 1e9) || collator.compare(a.title, b.title);
+export type Group = { key: string; label: string; sub: string; docs: DocSummary[] };
+/** Books by author, A to Z, "Ohne Autor" last; a shelf is its books by title. */
+export function byAuthor(docs: DocSummary[]): Group[] {
+  const m = new Map<string, DocSummary[]>();
+  for (const d of docs) { const k = d.by?.trim() ?? ""; (m.get(k) ?? m.set(k, []).get(k)!).push(d); }
+  return [...m].map(([k, ds]) => ({ key: k, label: k || "Ohne Autor", sub: "", docs: ds.sort((a, b) => collator.compare(a.title, b.title)) }))
+    .sort((a, b) => Number(a.key === "") - Number(b.key === "") || collator.compare(a.label, b.label));
+}
+/** Tracks by album (and its artist), albums A to Z, tracks without an album last as "Einzelne Titel". */
+export function byAlbum(docs: DocSummary[]): Group[] {
+  const m = new Map<string, DocSummary[]>();
+  for (const d of docs) { const k = d.album?.trim() ? `${d.album.trim()}\u0000${d.by?.trim() ?? ""}` : ""; (m.get(k) ?? m.set(k, []).get(k)!).push(d); }
+  return [...m].map(([k, ds]) => {
+    const [album = "", artist = ""] = k.split("\u0000");
+    const artists = new Set(ds.map(d => d.by?.trim() ?? ""));
+    return { key: k, label: album || "Einzelne Titel", sub: album ? (artists.size > 1 && !artist ? "Verschiedene" : artist) : "", docs: ds.sort(album ? byTrack : (a, b) => collator.compare(a.title, b.title)) };
+  }).sort((a, b) => Number(a.key === "") - Number(b.key === "") || collator.compare(a.label, b.label));
+}
+/** The album a track belongs to, in track order (a track without album: just itself). One request per page of 200. */
+export async function albumOf(d: DocSummary): Promise<DocSummary[]> {
+  if (!d.album) return [d];
+  const out: DocSummary[] = [];
+  let cursor: string | null = null;
+  for (let i = 0; i < 10; i++) {
+    const r: DocList = await api<DocList>(`/api/docs?kind=audio&limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+    out.push(...r.docs.filter(x => x.album === d.album && (x.by ?? "") === (d.by ?? "")));
+    if (!r.next) break; cursor = r.next;
+  }
+  return out.length ? out.sort(byTrack) : [d];
+}
