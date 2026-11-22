@@ -46,7 +46,7 @@ recognised words (4 letters or more) are real words, against the vocabulary of t
 | **the same, 2048 px (chosen)** | **3783** | **89.6 %** | 140 s |
 | PP-OCRv6 small det + rec (June 2026), 960 px, its own thresholds | 3688 | 87.9 % | 148 s |
 | PP-OCRv6 small, 1536 px, its own thresholds | 3742 | 88.7 % | 178 s |
-| PP-OCRv6 medium det + rec, 1536 px, its own thresholds | 2984 | 72.8 % | 6 to 10 min |
+| PP-OCRv6 medium det + rec, 1536 px, its own thresholds | 2984 | 72.8 % | 904 s |
 | Apple Vision (the reference) | 3442 | | |
 
 PP-OCRv6 small reads no more than the pair in use and is about half again as slow, and medium (62 + 77 MB) reads fewer words and takes minutes, so the models stayed. Its
