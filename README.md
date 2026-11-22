@@ -1,8 +1,16 @@
+<div align="center">
+
+<img src="app/client/icons/icon-512.png" width="96" alt="Monet">
+
 # monet
+
+</div>
 
 Self-hosted photos for a household, replacing Google Photos: a Bun server, a Svelte web app, and agents for Mac and
 Android that upload from the devices. Live at https://monet.kaleve.dev on kaleve-home (the laptop in toolbox/home),
 passkeys only. The contract every part builds against is `docs/spec.md`; `CLAUDE.md` says how to work here.
+
+<img src="assets/screenshot.jpg" alt="Monet on the desktop: the timeline of a demo library with invented photos" width="720">
 
 ## Layout
 
