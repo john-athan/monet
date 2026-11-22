@@ -10,7 +10,7 @@
 // only where the file itself had no date or place).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
-import { known, MEDIA, missing, post, sendFile, sha256File, walk } from "./upload-lib";
+import { known, MEDIA, missing, pool, post, sendFile, sha256File, walk } from "./upload-lib";
 
 const args = process.argv.slice(2);
 const opt = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
@@ -56,11 +56,6 @@ function sidecarFor(path: string): Side | undefined {
   return m.get(name) ?? m.get(name.replace(/-(edited|bearbeitet)(?=\.[^.]+$)/i, ""));
 }
 
-/** Runs `fn` over `items` with `n` at a time. */
-async function pool<T>(items: T[], n: number, fn: (t: T, i: number) => Promise<void>) {
-  let next = 0;
-  await Promise.all(Array.from({ length: n }, async () => { while (next < items.length) { const i = next++; await fn(items[i], i); } }));
-}
 const gb = (b: number) => (b / 1e9).toFixed(1);
 const t0 = Date.now();
 

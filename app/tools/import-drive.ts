@@ -12,7 +12,7 @@
 import { appendFileSync, writeFileSync } from "node:fs";
 import { relative, sep } from "node:path";
 import { FORMATS, extOf } from "../server/docsniff";
-import { known, MEDIA, missing, post, sendFile, sha256File, walk } from "./upload-lib";
+import { known, MEDIA, missing, pool, post, sendFile, sha256File, walk } from "./upload-lib";
 
 const args = process.argv.slice(2);
 const opt = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
@@ -39,10 +39,6 @@ function planOf(path: string): Plan | null {
     return { path, rel, media, album: dir[1] ?? null, folder: null };
   }
   return { path, rel, media, album: null, folder: dir.length ? dir.join("/") : null };
-}
-async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
-  let next = 0;
-  await Promise.all(Array.from({ length: n }, async () => { while (next < items.length) await fn(items[next++]); }));
 }
 const gb = (b: number) => (b / 1e9).toFixed(1);
 

@@ -20,6 +20,12 @@ export function* walk(dir: string): Generator<string> {
   }
 }
 
+/** Runs `fn` over `items` with `n` at a time. */
+export async function pool<T>(items: T[], n: number, fn: (t: T, i: number) => Promise<void>) {
+  let next = 0;
+  await Promise.all(Array.from({ length: n }, async () => { while (next < items.length) { const i = next++; await fn(items[i], i); } }));
+}
+
 export async function sha256File(path: string): Promise<string> {
   const h = new Bun.CryptoHasher("sha256");
   for await (const c of Bun.file(path).stream()) h.update(c);
