@@ -90,7 +90,8 @@ export function storeOcrWords(id: number, pages: { x: number; y: number; w: numb
   const pt = pages.map(fromOcr);
   write(d.sha256, pt);
   const text = pt.map(p => p.l.map(l => l[4]).join("\n")).join("\n\n").trim();
-  db.query("UPDATE doc SET words_ok = ?, text = CASE WHEN coalesce(length(trim(text)), 0) < ? THEN ? ELSE text END WHERE id = ?").run(text ? 2 : 3, 50, text || null, id);
+  // a scan has fewer than SCAN_CHARS letters per page of its own: what OCR reads replaces it (also an earlier OCR's text)
+  db.query("UPDATE doc SET words_ok = ?, text = coalesce(?, text) WHERE id = ?").run(text ? 2 : 3, text || null, id);
   reindexDoc(id);
   return !!text;
 }

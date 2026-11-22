@@ -30,6 +30,28 @@ The server reads text itself; the Mac may still post Apple Vision text for a pho
 
 Measured on the server (2 vCPU, 4 GB RAM) on 2026-11-21 (25 photos): 22 s for the batch, so about 0.9 s per photo with start-up; peak 610 MB for the worker, so `MemoryMax` is 1200M. On the Mac 0.43 s per photo. PP-OCRv4 mobile detection found a car park sign ("109", "TERMINAI" for TERMINAL) that PP-OCRv3 mobile missed; the v5 detector is only offered as the 88 MB server model.
 
+### Pages of scanned files
+
+A page of a scanned file (docs/together.md, "Text on the page") goes in at 2048 px on the long side (`DOC_DET` in
+`server/ocr-queue.ts`, `det` per item of the worker), up to 160 lines, with line boxes. Measured on 2026-11-22 on the Mac
+with the first two pages of the library's 22 scans (44 pages). There is no ground truth: one measure is agreement with
+Apple Vision (accurate, de-DE), which misreads the blurry scans too ("einkommonstouor"); the fairer one is how many
+recognised words (4 letters or more) are real words, against the vocabulary of the library's 780 born-digital PDFs plus
+/usr/share/dict/words.
+
+| Variant | Real words | Agrees with Vision | 44 pages |
+|---|---|---|---|
+| PP-OCRv4 mobile det + PP-OCRv5 Latin rec, 960 px | 3640 | 87.5 % | 95 s |
+| the same, 1536 px | 3722 | 88.4 % | 119 s |
+| **the same, 2048 px (chosen)** | **3783** | **89.6 %** | 140 s |
+| PP-OCRv6 small det + rec (June 2026), 960 px, its own thresholds | 3688 | 87.9 % | 148 s |
+| PP-OCRv6 small, 1536 px, its own thresholds | 3742 | 88.7 % | 178 s |
+| Apple Vision (the reference) | 3442 | | |
+
+PP-OCRv6 small reads no more than the pair in use and is about half again as slow, so the models stayed. Its
+recogniser is one model for 50 languages (18 708 characters). What limits the blurry scans ("Finanzant Münchon") is the
+scan itself: Vision misreads the same words. VL models (PaddleOCR-VL, 0.9 B) need a GPU.
+
 ## Decisions
 
 1. Model: SigLIP 2 B/32 at 256 px (`siglip2-b32-256`), chosen on 2026-11-21 over CLIP B/32 with the multilingual CLIP text model and over SigLIP 2 B/16 at 224 and 256 px. On 134 test photos with 45 hand-judged German queries (retrieval of the right photos among all 134; native onnxruntime, text towers int8): CLIP MRR 0.72 (R@1 0.60, R@5 0.84); SigLIP 2 B/32-256 MRR 0.96 (0.93, 1.00); B/16-224 0.95; B/16-256 0.96. B/16 costs 3 to 4 times the compute for no gain on this set, so B/32. Biggest gains: "Konservendose mit Miesmuscheln" rank 109 to 1, "Kanone" 38 to 1, "Lutscher" 33 to 1, "Terrarium" 13 to 1. With the fp16 text tower that ships (Decision 2) it is MRR 0.93 natively and 0.969 (R@1 0.96, R@5 1.00) in the built worker in headless Chrome; on 45 queries that difference is noise, the gap to CLIP is not.

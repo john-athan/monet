@@ -17,7 +17,7 @@ const DROP = 0.5; // PaddleOCR's drop_score: a line read with less mean confiden
 // a line needs 3 letters or digits: on the first 25 photos the shorter reads were noise ("*", "el", "un")
 const WORDY = /[\p{L}\p{N}].*[\p{L}\p{N}].*[\p{L}\p{N}]/u;
 
-export async function ocrWorker(items: { id: number | string; path: string; lines?: boolean }[], write: (line: string) => void) {
+export async function ocrWorker(items: { id: number | string; path: string; lines?: boolean; det?: number }[], write: (line: string) => void) {
   const base = resolve(DIST, "vendor/ort") + "/";
   const ort: any = await import(join(base, "ort.webgpu.min.mjs"));
   ort.env.wasm.wasmPaths = "file://" + base;
@@ -34,7 +34,8 @@ export async function ocrWorker(items: { id: number | string; path: string; line
         const ppm = join(tmp, "x.ppm");
         await run(["vips", "copy", it.path, ppm], 60_000, { VIPS_CONCURRENCY: "1" });
         const im = readPpmImage(new Uint8Array(readFileSync(ppm)));
-        const d = detInput(im);
+        // det: the detector's long side; a page of a document needs far more than a photo (docs/ml.md)
+        const d = detInput(im, it.det ?? 960);
         const out = await det.run({ [det.inputNames[0]]: new ort.Tensor("float32", d.data, [1, 3, d.h, d.w]) });
         const map = out[det.outputNames[0]].data as Float32Array;
         const boxes: Box[] = boxesFromMap(map, d.w, d.h).map(b => ({ ...b, x: b.x * d.sx, y: b.y * d.sy, w: b.w * d.sx, h: b.h * d.sy }));

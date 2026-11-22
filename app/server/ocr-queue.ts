@@ -17,6 +17,10 @@ const BATCH = 25;
 const RETRY_MS = 10 * 60_000;
 const failed = new Set<number>(); // skipped until the next start: a photo the worker cannot read must not loop
 const failedDocs = new Set<number>();
+/* The detector sees a photo at 960 px on its long side; an A4 page shrunk that far has letters 8 to 10 px high and the
+ * reader misreads them ("Finanzant Münchon"). A page goes in at DOC_DET, nearly its full 1600 x 2263 px picture.
+ * Measured on 2026-11-22, see docs/ml.md. */
+export const DOC_DET = Number(process.env.MONET_OCR_DOC_DET ?? 2048);
 
 /** OCR of a scanned file (docs/together.md, "Text on the page"): its first OCR_PAGES pages, as the 1600 px page pictures
  *  the viewer uses, read with line boxes. Then the file is dated, linked and embedded again with its new text.
@@ -24,8 +28,8 @@ const failedDocs = new Set<number>();
 async function scan(id: number): Promise<boolean> {
   const d = rowById(id);
   if (!d || !d.pages) { db.query("UPDATE doc SET words_ok = 3 WHERE id = ?").run(id); return true; }
-  const items: { id: number; path: string; lines: true }[] = [];
-  for (let n = 1; n <= Math.min(d.pages, OCR_PAGES); n++) { const f = await pageFile(d, "p", n); if (f) items.push({ id: n, path: f, lines: true }); }
+  const items: { id: number; path: string; lines: true; det: number }[] = [];
+  for (let n = 1; n <= Math.min(d.pages, OCR_PAGES); n++) { const f = await pageFile(d, "p", n); if (f) items.push({ id: n, path: f, lines: true, det: DOC_DET }); }
   const pages: { x: number; y: number; w: number; h: number; t: string }[][] = Array.from({ length: d.pages ? Math.min(d.pages, OCR_PAGES) : 0 }, () => []);
   let read = 0;
   const code = await work(items, (r: { id: number; lines?: any[]; error?: string }) => {

@@ -7,7 +7,7 @@ import { chooseDocDate, metaDate } from "./docdate";
 import { reindexDoc, rendered, rowById, summary, COLS_DOC_SUMMARY } from "./docs";
 import { reindexFts } from "./fts";
 import { buildWords } from "./doctext";
-import { kickOcr } from "./ocr-queue";
+import { DOC_DET, kickOcr } from "./ocr-queue";
 import { enqueue, ORIGINALS } from "./ingest";
 import { fold } from "./parse";
 import { HttpError, localDay, runText } from "./util";
@@ -226,6 +226,11 @@ export async function sweepTogether(): Promise<{ dated: number; reindexed: numbe
   let worded = 0;
   for (const r of db.query("SELECT id FROM doc WHERE words_ok = 0 AND state = 'ok' AND kind IN ('doc','slides') AND deleted_at IS NULL ORDER BY id").all() as { id: number }[]) {
     await enqueue(() => buildWords(r.id)); worded++;
+  }
+  // scans read under an earlier rule (a smaller detector input) are read again, once
+  if (metaGet("ocr_doc_det") !== String(DOC_DET)) {
+    worded += db.query("UPDATE doc SET words_ok = 4 WHERE words_ok = 2").run().changes;
+    metaSet("ocr_doc_det", String(DOC_DET));
   }
   if (worded) kickOcr();
   return { dated, reindexed, stacks };
