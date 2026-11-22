@@ -1,0 +1,65 @@
+# Monet on kaleve-home, the laptop behind the Cloudflare tunnel. Under pressure Monet is the one that yields:
+# capped memory, first in line for the OOM killer, low CPU and IO weight. It listens on localhost only; nginx
+# (deploy/nginx.sh) is the tunnel's target for monet.kaleve.dev.
+#
+# Install and upgrade: deploy/deploy.sh. Secrets live in /etc/monet.env (root, 0600): MONET_SETUP_TOKEN.
+# A static user (not DynamicUser) so that `monet-reset-passkeys` can run as the same user and not leave root-owned
+# database files behind.
+[Unit]
+Description=Monet: photo library
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=monet
+Group=monet
+StateDirectory=monet
+WorkingDirectory=/var/lib/monet
+EnvironmentFile=-/etc/monet.env
+Environment=PORT=4320 HOST=127.0.0.1
+Environment=MONET_ORIGIN=https://monet.kaleve.dev
+Environment=MONET_DB=/var/lib/monet/monet.db
+Environment=MONET_DATA=/var/lib/monet/data
+Environment=MONET_ORIGINALS=/var/lib/monet/originals
+Environment=MONET_MODELS=/var/lib/monet/models
+Environment=MONET_GEONAMES=/var/lib/monet/geonames/cities15000.txt
+Environment=MONET_DIST=/usr/local/lib/monet/dist
+Environment=HOME=/var/lib/monet
+# if MONET_ORIGINALS moves to a mount outside /var/lib/monet, list it here
+#ReadWritePaths=/mnt/monet-originals
+ExecStart=/usr/local/lib/monet/monet
+Restart=always
+RestartSec=10
+# the server needs about 80 MB, the OCR worker it starts for a batch up to 610 MB (server/ocr-worker.ts)
+MemoryMax=2500M
+OOMScoreAdjust=600
+CPUWeight=20
+IOWeight=20
+Nice=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+# no MemoryDenyWriteExecute: Bun's JavaScript engine compiles code at run time
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

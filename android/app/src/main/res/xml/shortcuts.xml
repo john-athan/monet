@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long press on the icon: straight to the backup screen. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="sicherung"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sicherung_kurz"
+        android:shortcutLongLabel="@string/sicherung_lang">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.kaleve.monet"
+            android:targetClass="dev.kaleve.monet.MainActivity" />
+    </shortcut>
+</shortcuts>

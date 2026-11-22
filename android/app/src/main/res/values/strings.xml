@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Monet</string>
+    <string name="mark_desc">Zeichen von %1$s</string>
+    <string name="channel_name">Sicherung</string>
+    <string name="notif_title">Monet sichert Fotos</string>
+    <string name="sichert_von">%1$d von %2$d</string>
+
+    <string name="verbunden">Mit deinem Server verbunden</string>
+    <string name="nicht_erreichbar">Server nicht erreichbar</string>
+
+    <string name="alles_gesichert">Alles gesichert</string>
+    <string name="sichert_von_titel">Sichert %1$s von %2$s</string>
+    <plurals name="noch_offen">
+        <item quantity="one">Noch %1$s offen</item>
+        <item quantity="other">Noch %1$s offen</item>
+    </plurals>
+
+    <string name="noch_nie">Noch nie gesichert.</string>
+    <string name="zuletzt_jetzt">Zuletzt gerade eben.</string>
+    <plurals name="zuletzt_min">
+        <item quantity="one">Zuletzt vor einer Minute.</item>
+        <item quantity="other">Zuletzt vor %1$s Minuten.</item>
+    </plurals>
+    <plurals name="zuletzt_std">
+        <item quantity="one">Zuletzt vor einer Stunde.</item>
+        <item quantity="other">Zuletzt vor %1$s Stunden.</item>
+    </plurals>
+    <plurals name="zuletzt_tage">
+        <item quantity="one">Zuletzt vor einem Tag.</item>
+        <item quantity="other">Zuletzt vor %1$s Tagen.</item>
+    </plurals>
+    <string name="heute_beides">Heute %1$s und %2$s.</string>
+    <string name="heute_eins">Heute %1$s.</string>
+    <string name="heute_nichts">Heute noch nichts gesichert.</string>
+    <plurals name="heute_fotos">
+        <item quantity="one">ein Foto</item>
+        <item quantity="other">%1$s Fotos</item>
+    </plurals>
+    <plurals name="heute_videos">
+        <item quantity="one">ein Video</item>
+        <item quantity="other">%1$s Videos</item>
+    </plurals>
+
+    <plurals name="warten_wlan">
+        <item quantity="one">%1$s Foto wartet auf WLAN</item>
+        <item quantity="other">%1$s Fotos warten auf WLAN</item>
+    </plurals>
+    <plurals name="warten_strom">
+        <item quantity="one">%1$s Foto wartet auf Strom</item>
+        <item quantity="other">%1$s Fotos warten auf Strom</item>
+    </plurals>
+    <plurals name="warten_sonst">
+        <item quantity="one">%1$s Foto wartet auf die nächste Sicherung</item>
+        <item quantity="other">%1$s Fotos warten auf die nächste Sicherung</item>
+    </plurals>
+    <string name="queue_laeuft">Deine Fotos werden gerade gesichert</string>
+    <string name="jetzt_mobil">Jetzt über mobile Daten senden</string>
+
+    <string name="ordner_titel">Gesicherte Ordner</string>
+    <string name="kamera">Kamera</string>
+    <string name="keine_ordner">Auf diesem Telefon liegen noch keine Fotos.</string>
+    <string name="nicht_gesichert">, nicht gesichert</string>
+    <plurals name="n_fotos">
+        <item quantity="one">%1$s Foto</item>
+        <item quantity="other">%1$s Fotos</item>
+    </plurals>
+    <plurals name="n_videos">
+        <item quantity="one">%1$s Video</item>
+        <item quantity="other">%1$s Videos</item>
+    </plurals>
+    <plurals name="n_bilder">
+        <item quantity="one">%1$s Bild</item>
+        <item quantity="other">%1$s Bilder</item>
+    </plurals>
+    <string name="n_fotos_videos">%1$s Fotos und Videos</string>
+    <string name="nur_wlan">Nur über WLAN</string>
+    <string name="nur_laden">Nur beim Laden</string>
+
+    <string name="platz_freigeben">Platz freigeben</string>
+    <plurals name="frei_text">
+        <item quantity="one">%1$s ist auf deinem Server sicher. Auf diesem Telefon belegt es %2$s.</item>
+        <item quantity="other">%1$s sind auf deinem Server sicher. Auf diesem Telefon belegen sie %2$s.</item>
+    </plurals>
+    <string name="frei_leer">Sobald Fotos auf deinem Server liegen, kannst du hier Platz freigeben.</string>
+    <string name="frei_nichts">Dein Server hat gerade nichts bestätigt, das du löschen könntest.</string>
+    <string name="frei_offline">Dein Server ist nicht erreichbar. Gelöscht wird nur, was er bestätigt.</string>
+
+    <string name="zugriff_titel">Monet braucht Zugriff auf deine Fotos</string>
+    <string name="zugriff_text">Ohne Zugriff kann Monet nichts sichern. Der Ort der Aufnahme bleibt in der Datei erhalten.</string>
+    <string name="zugriff_knopf">Zugriff erlauben</string>
+    <string name="sicherung_kurz">Sicherung</string>
+    <string name="sicherung_lang">Sicherung einstellen</string>
+    <string name="fotos_ansehen">Fotos ansehen</string>
+    <string name="zugriff_einstellungen">In den Einstellungen erlauben</string>
+    <string name="zugriff_teil_titel">Monet sieht nur ausgewählte Fotos</string>
+    <string name="zugriff_teil_text">Gesichert wird nur, was du freigegeben hast. Neue Fotos kommen erst dazu, wenn du alle erlaubst.</string>
+    <string name="zugriff_alle">Alle Fotos erlauben</string>
+
+    <string name="pair_title">Mit Monet verbinden</string>
+    <string name="pair_hint">Öffne auf deinem Server die Seite Geräte und erzeuge dort einen Code. Er gilt zehn Minuten.</string>
+    <string name="pair_server">Server</string>
+    <string name="pair_code">Code von der Geräteseite</string>
+    <string name="pair_go">Verbinden</string>
+    <string name="pair_busy">Verbinde</string>
+    <string name="pair_err_code">Der Code stimmt nicht oder ist abgelaufen. Erzeuge auf der Geräteseite einen neuen.</string>
+    <string name="pair_err_server">Das ist keine gültige Serveradresse.</string>
+    <string name="pair_err_network">Der Server ist nicht erreichbar. Prüfe die Adresse und dein Netz.</string>
+    <string name="pair_err_rate">Zu viele Versuche. Warte eine Minute.</string>
+
+    <string-array name="zahlwoerter">
+        <item>ein</item><item>zwei</item><item>drei</item><item>vier</item><item>fünf</item><item>sechs</item>
+        <item>sieben</item><item>acht</item><item>neun</item><item>zehn</item><item>elf</item><item>zwölf</item>
+    </string-array>
+</resources>

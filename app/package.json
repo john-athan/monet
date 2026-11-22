@@ -1,0 +1,14 @@
+{
+  "name": "monet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.ts",
+    "dev": "bun run build.ts --dev && bun tools/dev-mock.ts",
+    "start": "bun server/main.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "svelte": "5.58.0"
+  }
+}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Monet für Android: Sicherung</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#5A6FB8}a:hover{color:#2E2B5C}
+.m{--ground:#EEF2EA;--surface:#FAFBF5;--surface-2:#E0E8DA;--surface-3:#CFDAC8;--ink:#22305E;--muted:#55617E;--rule:#D2DCCB;--sun:#EE7A2F;--sun-ink:#A44A12;--water:#3D6FB0;--water-soft:#D9E4F1;--on-ink:#FAFBF5;--glass:rgb(250 251 245 / .86);--veil:rgb(34 48 94 / .52);--deep:#1A1E44;--shadow:0 1px 2px rgb(34 48 94 / .1),0 14px 34px -14px rgb(34 48 94 / .3);--teich:#2F7F86;--esszimmer:#E2AE1C;--garten:#4C8A52;--atelier:#C8707A;--font-display:Didot,"Bodoni 72","Bodoni MT","Iowan Old Style",ui-serif,Georgia,serif;--font-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;color:var(--ink);background:var(--ground);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;color-scheme:light}
+.m[data-light=morgen]{--ground:#F5ECEB;--surface:#FCF8F6;--surface-2:#ECDFE1;--surface-3:#E0CDD1;--ink:#2E2B5C;--muted:#625C86;--rule:#E2D3D7;--sun:#E8743B;--sun-ink:#A2461A;--water:#5A6FB8;--water-soft:#E1E3F3;--on-ink:#FCF8F6;--glass:rgb(252 248 246 / .86);--veil:rgb(46 43 92 / .5);--shadow:0 1px 2px rgb(46 43 92 / .1),0 14px 34px -14px rgb(46 43 92 / .3)}
+.m[data-light=abend]{--ground:#F6E4D5;--surface:#FDF4EC;--surface-2:#EFD5C3;--surface-3:#E5C2AC;--ink:#3B2553;--muted:#6C5470;--rule:#E8CDBA;--sun:#D9532A;--sun-ink:#9E3513;--water:#5E58A8;--water-soft:#E9DFF0;--on-ink:#FDF4EC;--glass:rgb(253 244 236 / .86);--veil:rgb(59 37 83 / .5);--shadow:0 1px 2px rgb(59 37 83 / .1),0 14px 34px -14px rgb(59 37 83 / .3)}
+.m[data-light=nacht]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;color-scheme:dark}
+@media (prefers-color-scheme: dark){.m[data-light=auto]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;color-scheme:dark}}
+.m,.m *{box-sizing:border-box}
+.m a{text-decoration:none}
+.m button,.m input{font:inherit;color:inherit}
+.m :focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.m h1,.m h2,.m h3{font-family:var(--font-display);font-weight:400;margin:0;letter-spacing:0}
+.m p{margin:0}
+.m .tnum{font-variant-numeric:tabular-nums}
+.m .dab{position:absolute;border-radius:999px}
+.m .sw{appearance:none;-webkit-appearance:none;margin:0;flex:none;width:46px;height:28px;border-radius:14px;background:var(--surface-3);position:relative;cursor:pointer}
+.m .sw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgb(34 48 94 / .25)}
+.m .sw:checked{background:var(--water)}
+.m .sw:checked::after{left:21px}
+.m .sw:disabled{opacity:.45;cursor:default}
+.m .row{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 16px}
+.m .row + .row{border-top:1px solid var(--rule)}
+.m .btn-ink:hover{background:var(--water)}
+.m .link:hover{text-decoration:underline}
+</style>
+</helmet>
+<div class="m" data-light="{{licht}}" style="position: relative; width: 390px; height: 844px; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 20px">
+
+  <header style="display: flex; align-items: center; gap: 10px">
+    <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="14" r="6.6" fill="var(--sun)"></circle>
+      <rect x="4" y="23.2" width="10" height="2.6" rx="1.3" fill="var(--water)" transform="rotate(-4 9 24.5)"></rect>
+      <rect x="16.4" y="23.4" width="7.2" height="2.4" rx="1.2" fill="var(--sun)"></rect>
+      <rect x="26" y="23" width="10.5" height="2.6" rx="1.3" fill="var(--teich)" transform="rotate(3 31 24.3)"></rect>
+      <rect x="7" y="28.2" width="8.5" height="2.4" rx="1.2" fill="var(--teich)" transform="rotate(2 11 29.4)"></rect>
+      <rect x="24.5" y="28" width="9" height="2.4" rx="1.2" fill="var(--atelier)" transform="rotate(-3 29 29.2)"></rect>
+      <rect x="11" y="33" width="18" height="2.4" rx="1.2" fill="var(--water)" transform="rotate(-1.5 20 34.2)"></rect>
+    </svg>
+    <span style="font-family: var(--font-display); font-size: 26px; line-height: 1">Monet</span>
+    <span style="flex: 1"></span>
+    <span style="font-size: 13px; color: var(--muted)">Mit deinem Server verbunden</span>
+  </header>
+
+  <section aria-label="Stand der Sicherung" style="padding: 22px 4px 6px; display: flex; flex-direction: column; gap: 4px">
+    <div style="position: relative; width: max-content">
+      <span aria-hidden="true" class="dab" style="left: -4px; bottom: 4px; width: 190px; height: 12px; background: var(--water); opacity: .28; transform: rotate(-2deg)"></span>
+      <span aria-hidden="true" class="dab" style="left: 120px; bottom: 0; width: 110px; height: 10px; background: var(--atelier); opacity: .35; transform: rotate(3deg)"></span>
+      <h1 style="position: relative; font-size: 44px; line-height: 1.02">Alles gesichert</h1>
+    </div>
+    <p class="tnum" style="font-size: 15px; color: var(--muted)">Zuletzt vor vier Minuten. Heute zwölf Fotos und ein Video.</p>
+  </section>
+
+  <section aria-label="Warteschlange" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule)">
+    <span style="display: flex; flex: none">
+      <sc-for list="{{waiting}}" as="w" hint-placeholder-count="3">
+        <span style="width: 40px; height: 40px; margin-right: -10px; border-radius: 8px; background: {{w}}; box-shadow: 0 0 0 2px var(--surface)"></span>
+      </sc-for>
+    </span>
+    <span style="flex: 1; min-width: 0; padding-left: 10px; display: flex; flex-direction: column; line-height: 1.3">
+      <span style="font-weight: 650">Drei Fotos warten auf WLAN</span>
+      <button type="button" class="link" style="align-self: flex-start; padding: 0; border: 0; background: none; color: var(--water); font-size: 14px; font-weight: 650">Jetzt über mobile Daten senden</button>
+    </span>
+  </section>
+
+  <section aria-label="Ordner" style="display: flex; flex-direction: column; gap: 6px">
+    <h2 style="font-size: 22px; padding: 6px 4px 0">Gesicherte Ordner</h2>
+    <div style="border-radius: 18px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule)">
+      <label class="row"><span style="flex: 1">Kamera<br><span class="tnum" style="font-size: 13px; color: var(--muted)">18.402 Fotos und Videos</span></span><input type="checkbox" role="switch" class="sw" checked></label>
+      <label class="row"><span style="flex: 1">WhatsApp Images<br><span class="tnum" style="font-size: 13px; color: var(--muted)">3.117 Fotos</span></span><input type="checkbox" role="switch" class="sw" checked></label>
+      <label class="row"><span style="flex: 1">Screenshots<br><span class="tnum" style="font-size: 13px; color: var(--muted)">904 Bilder, nicht gesichert</span></span><input type="checkbox" role="switch" class="sw"></label>
+    </div>
+  </section>
+
+  <section aria-label="Bedingungen" style="border-radius: 18px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule)">
+    <label class="row"><span style="flex: 1">Nur über WLAN</span><input type="checkbox" role="switch" class="sw" checked></label>
+    <label class="row"><span style="flex: 1">Nur beim Laden</span><input type="checkbox" role="switch" class="sw"></label>
+  </section>
+
+  <section aria-label="Platz freigeben" style="margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 18px; background: var(--water-soft)">
+    <p class="tnum" style="font-size: 15px; line-height: 1.4"><b style="font-weight: 650">2.341 Fotos</b> sind auf deinem Server und in der Storage Box sicher. Auf diesem Telefon belegen sie 9,8 GB.</p>
+    <button type="button" class="btn-ink" style="height: 48px; border: 0; border-radius: 24px; background: var(--ink); color: var(--on-ink); font-weight: 650">Platz freigeben</button>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"licht":{"editor":"enum","options":["mittag","morgen","abend","nacht","auto"],"default":"morgen"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      licht: this.props.licht ?? 'morgen',
+      waiting: [
+        'radial-gradient(circle at 22% 70%, #D94F3A 0 9%, transparent 9.5%), radial-gradient(circle at 50% 74%, #F0A23A 0 9%, transparent 9.5%), radial-gradient(circle at 78% 70%, #8DB34E 0 9%, transparent 9.5%), linear-gradient(180deg, #E9E1D3 0 30%, #C8553D 30% 40%, #F2EDE4 40% 58%, #7B5A3F 58% 100%)',
+        'radial-gradient(circle at 44% 30%, #FFB347 0 3%, transparent 3.6%), radial-gradient(ellipse 30% 9% at 50% 44%, #F6EDE2 0 95%, transparent 100%), radial-gradient(ellipse 30% 20% at 50% 56%, #C98F6A 0 95%, transparent 100%), linear-gradient(180deg, #6B4A3A, #3E2A22)',
+        'radial-gradient(circle at 18% 68%, #FFC86B 0 4%, transparent 4.6%), radial-gradient(circle at 58% 70%, #FFB45A 0 3.6%, transparent 4.2%), linear-gradient(180deg, #23306A 0%, #3A3F78 55%, #252B58 56%, #1A1E44 100%)'
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

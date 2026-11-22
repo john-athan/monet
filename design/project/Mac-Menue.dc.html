@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Monet für macOS: Menüleiste</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#9DB3EE}a:hover{color:#C9D4F5}
+.m{--ground:#EEF2EA;--surface:#FAFBF5;--surface-2:#E0E8DA;--surface-3:#CFDAC8;--ink:#22305E;--muted:#55617E;--rule:#D2DCCB;--sun:#EE7A2F;--sun-ink:#A44A12;--water:#3D6FB0;--water-soft:#D9E4F1;--on-ink:#FAFBF5;--glass:rgb(250 251 245 / .86);--veil:rgb(34 48 94 / .52);--deep:#1A1E44;--shadow:0 1px 2px rgb(34 48 94 / .1),0 14px 34px -14px rgb(34 48 94 / .3);--teich:#2F7F86;--esszimmer:#E2AE1C;--garten:#4C8A52;--atelier:#C8707A;--font-display:Didot,"Bodoni 72","Bodoni MT","Iowan Old Style",ui-serif,Georgia,serif;--font-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;color:var(--ink);background:var(--ground);font-family:var(--font-body);font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased;color-scheme:light}
+.m[data-light=morgen]{--ground:#F5ECEB;--surface:#FCF8F6;--surface-2:#ECDFE1;--surface-3:#E0CDD1;--ink:#2E2B5C;--muted:#625C86;--rule:#E2D3D7;--sun:#E8743B;--sun-ink:#A2461A;--water:#5A6FB8;--water-soft:#E1E3F3;--on-ink:#FCF8F6;--glass:rgb(252 248 246 / .86);--veil:rgb(46 43 92 / .5);--shadow:0 1px 2px rgb(46 43 92 / .1),0 14px 34px -14px rgb(46 43 92 / .3)}
+.m[data-light=abend]{--ground:#F6E4D5;--surface:#FDF4EC;--surface-2:#EFD5C3;--surface-3:#E5C2AC;--ink:#3B2553;--muted:#6C5470;--rule:#E8CDBA;--sun:#D9532A;--sun-ink:#9E3513;--water:#5E58A8;--water-soft:#E9DFF0;--on-ink:#FDF4EC;--glass:rgb(253 244 236 / .86);--veil:rgb(59 37 83 / .5);--shadow:0 1px 2px rgb(59 37 83 / .1),0 14px 34px -14px rgb(59 37 83 / .3)}
+.m[data-light=nacht]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;color-scheme:dark}
+@media (prefers-color-scheme: dark){.m[data-light=auto]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;color-scheme:dark}}
+.m,.m *{box-sizing:border-box}
+.m a{text-decoration:none}
+.m button,.m input{font:inherit;color:inherit}
+.m :focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.m h1,.m h2,.m h3{font-family:var(--font-display);font-weight:400;margin:0;letter-spacing:0}
+.m p{margin:0}
+.m .tnum{font-variant-numeric:tabular-nums}
+.m .sw{appearance:none;-webkit-appearance:none;margin:0;flex:none;width:34px;height:20px;border-radius:10px;background:var(--surface-3);position:relative;cursor:pointer}
+.m .sw::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--ink)}
+.m .sw:checked{background:var(--water)}
+.m .sw:checked::after{left:16px;background:var(--on-ink)}
+.m .row{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 12px}
+.m .row + .row{border-top:1px solid var(--rule)}
+.m .btn-ink:hover{filter:brightness(1.08)}
+.m .ghost:hover{background:var(--surface-2)}
+.m .link:hover{text-decoration:underline}
+</style>
+</helmet>
+<div class="m" data-light="{{licht}}" style="width: 360px; height: 600px; padding: 14px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--rule); display: flex; flex-direction: column; gap: 14px; overflow: hidden">
+
+  <header style="display: flex; align-items: center; gap: 8px">
+    <svg width="26" height="26" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="14" r="6.6" fill="var(--sun)"></circle>
+      <rect x="4" y="23.2" width="10" height="2.6" rx="1.3" fill="var(--water)" transform="rotate(-4 9 24.5)"></rect>
+      <rect x="16.4" y="23.4" width="7.2" height="2.4" rx="1.2" fill="var(--sun)"></rect>
+      <rect x="26" y="23" width="10.5" height="2.6" rx="1.3" fill="var(--teich)" transform="rotate(3 31 24.3)"></rect>
+      <rect x="7" y="28.2" width="8.5" height="2.4" rx="1.2" fill="var(--teich)" transform="rotate(2 11 29.4)"></rect>
+      <rect x="24.5" y="28" width="9" height="2.4" rx="1.2" fill="var(--atelier)" transform="rotate(-3 29 29.2)"></rect>
+      <rect x="11" y="33" width="18" height="2.4" rx="1.2" fill="var(--water)" transform="rotate(-1.5 20 34.2)"></rect>
+    </svg>
+    <span style="font-family: var(--font-display); font-size: 22px; line-height: 1">Monet</span>
+    <span style="flex: 1"></span>
+    <span style="display: inline-flex; align-items: center; gap: 5px; color: var(--muted)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Alles gesichert
+    </span>
+  </header>
+
+  <section aria-label="Gerade in Arbeit" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface)">
+    <h2 style="font-size: 20px; line-height: 1.1">Analysiert drei Fotos</h2>
+    <div style="display: flex; gap: 6px">
+      <sc-for list="{{now}}" as="n" hint-placeholder-count="3">
+        <span style="position: relative; width: 64px; height: 64px; border-radius: 8px; background: {{n.bg}}; box-shadow: {{n.ring}}">
+          <sc-if value="{{n.done}}" hint-placeholder-val="{{false}}">
+            <span style="position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--water); display: grid; place-items: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--on-ink)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+          </sc-if>
+        </span>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span class="tnum" style="color: var(--muted)">Gesichter im zweiten Foto</span>
+      <span role="progressbar" aria-label="Fortschritt" aria-valuemin="0" aria-valuemax="3" aria-valuenow="1.6" style="position: relative; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden">
+        <span style="position: absolute; left: 0; top: 0; bottom: 0; width: 54%; border-radius: 3px; background: var(--sun)"></span>
+      </span>
+    </div>
+  </section>
+
+  <section aria-label="Quellen" style="display: flex; flex-direction: column; gap: 6px">
+    <h3 style="font-size: 17px; padding-left: 2px">Quellen</h3>
+    <div style="border-radius: 12px; background: var(--surface)">
+      <label class="row"><span style="flex: 1">Fotos-Mediathek<br><span class="tnum" style="color: var(--muted)">52.310 Objekte, aktuell</span></span><input type="checkbox" role="switch" class="sw" checked></label>
+      <label class="row"><span style="flex: 1">Bilder/Kamera<br><span class="tnum" style="color: var(--muted)">1.204 Dateien, aktuell</span></span><input type="checkbox" role="switch" class="sw" checked></label>
+      <div class="row"><button type="button" class="link" style="padding: 0; border: 0; background: none; color: var(--water); font-weight: 600">Ordner hinzufügen</button></div>
+    </div>
+  </section>
+
+  <section aria-label="Zweite Kopie" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface)">
+    <span style="flex: 1; min-width: 0; line-height: 1.35">Zweite Kopie auf <b style="font-weight: 650">„Archiv“</b><br><span class="tnum" style="color: var(--muted)">zuletzt gestern, 23:10</span></span>
+    <button type="button" class="ghost" style="height: 30px; padding: 0 12px; border: 0; border-radius: 15px; background: transparent; box-shadow: inset 0 0 0 1px var(--rule); font-weight: 600">Jetzt kopieren</button>
+  </section>
+
+  <footer style="margin-top: auto; display: flex; gap: 8px">
+    <button type="button" class="btn-ink" style="flex: 1; height: 36px; border: 0; border-radius: 18px; background: var(--ink); color: var(--on-ink); font-weight: 650">Monet öffnen</button>
+    <button type="button" class="ghost" style="height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: transparent; box-shadow: inset 0 0 0 1px var(--rule); font-weight: 600">Pausieren</button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"licht":{"editor":"enum","options":["mittag","morgen","abend","nacht","auto"],"default":"nacht"},"$preview":{"width":360,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      licht: this.props.licht ?? 'nacht',
+      now: [
+        { bg: 'radial-gradient(ellipse 18% 7% at 30% 64%, #7FAE5E 0 95%, transparent 100%), radial-gradient(circle at 31% 62%, #F2B8C6 0 3%, transparent 3.6%), linear-gradient(180deg, #4E7E78 0%, #3D6A80 55%, #2E5571 100%)', ring: 'none', done: true },
+        { bg: 'radial-gradient(ellipse 18% 22% at 50% 46%, #F0C9AE 0 96%, transparent 100%), radial-gradient(ellipse 22% 21% at 50% 37%, #7A4A2B 0 96%, transparent 100%), radial-gradient(ellipse 40% 28% at 50% 102%, #3F6E8F 0 96%, transparent 100%), linear-gradient(180deg, #E8D4C0, #C9A88A)', ring: '0 0 0 2px var(--ground), 0 0 0 4px var(--sun)', done: false },
+        { bg: 'radial-gradient(circle at 62% 44%, #F7A35C 0 7%, transparent 7.5%), linear-gradient(180deg, transparent 0 53.0%, #9A7FA0 53.0%, #4F5A84 100%), conic-gradient(from 134deg at 30% 40.0%, #5A587A 0 92deg, transparent 92deg), linear-gradient(180deg, #E7B58E 0%, #F0CFA8 42%, #9A7FA0 53%, #4F5A84 100%)', ring: 'none', done: false }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

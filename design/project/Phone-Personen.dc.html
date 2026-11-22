@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Monet: Personen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#3D6FB0}a:hover{color:#22305E}
+.m{--ground:#EEF2EA;--surface:#FAFBF5;--surface-2:#E0E8DA;--surface-3:#CFDAC8;--ink:#22305E;--muted:#55617E;--rule:#D2DCCB;--sun:#EE7A2F;--sun-ink:#A44A12;--water:#3D6FB0;--water-soft:#D9E4F1;--on-ink:#FAFBF5;--glass:rgb(250 251 245 / .86);--veil:rgb(34 48 94 / .52);--deep:#1A1E44;--shadow:0 1px 2px rgb(34 48 94 / .1),0 14px 34px -14px rgb(34 48 94 / .3);--teich:#2F7F86;--esszimmer:#E2AE1C;--garten:#4C8A52;--atelier:#C8707A;--ess-soft:#F7E8B4;--ess-rule:#E9D38A;--font-display:Didot,"Bodoni 72","Bodoni MT","Iowan Old Style",ui-serif,Georgia,serif;--font-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;color:var(--ink);background:var(--ground);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;color-scheme:light}
+.m[data-light=morgen]{--ground:#F5ECEB;--surface:#FCF8F6;--surface-2:#ECDFE1;--surface-3:#E0CDD1;--ink:#2E2B5C;--muted:#625C86;--rule:#E2D3D7;--sun:#E8743B;--sun-ink:#A2461A;--water:#5A6FB8;--water-soft:#E1E3F3;--on-ink:#FCF8F6;--glass:rgb(252 248 246 / .86);--veil:rgb(46 43 92 / .5);--shadow:0 1px 2px rgb(46 43 92 / .1),0 14px 34px -14px rgb(46 43 92 / .3)}
+.m[data-light=abend]{--ground:#F6E4D5;--surface:#FDF4EC;--surface-2:#EFD5C3;--surface-3:#E5C2AC;--ink:#3B2553;--muted:#6C5470;--rule:#E8CDBA;--sun:#D9532A;--sun-ink:#9E3513;--water:#5E58A8;--water-soft:#E9DFF0;--on-ink:#FDF4EC;--glass:rgb(253 244 236 / .86);--veil:rgb(59 37 83 / .5);--shadow:0 1px 2px rgb(59 37 83 / .1),0 14px 34px -14px rgb(59 37 83 / .3)}
+.m[data-light=nacht]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;--ess-soft:#3A3656;--ess-rule:#5A5170;color-scheme:dark}
+@media (prefers-color-scheme: dark){.m[data-light=auto]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;--ess-soft:#3A3656;--ess-rule:#5A5170;color-scheme:dark}}
+.m,.m *{box-sizing:border-box}
+.m a{text-decoration:none}
+.m button,.m input{font:inherit;color:inherit}
+.m :focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.m h1,.m h2,.m h3{font-family:var(--font-display);font-weight:400;margin:0;letter-spacing:0}
+.m p{margin:0}
+.m .tnum{font-variant-numeric:tabular-nums}
+.m .dab{position:absolute;border-radius:999px}
+.m .tab{color:var(--muted)}
+.m .tab:hover{color:var(--ink)}
+.m .btn-ink:hover{background:var(--water)}
+.m .btn-ghost:hover{background:var(--surface)}
+.m .who:hover .ring{box-shadow:0 0 0 3px var(--esszimmer)}
+.m input::placeholder{color:var(--muted)}
+</style>
+</helmet>
+<div class="m" data-light="{{licht}}" style="position: relative; width: 390px; height: 844px; overflow: hidden">
+
+  <header style="padding: 22px 18px 8px; display: flex; flex-direction: column; gap: 4px">
+    <div style="position: relative; width: max-content">
+      <span aria-hidden="true" class="dab" style="left: -2px; bottom: 2px; width: 104px; height: 10px; background: var(--esszimmer); opacity: .7; transform: rotate(-2deg)"></span>
+      <span aria-hidden="true" class="dab" style="left: 72px; bottom: -1px; width: 70px; height: 8px; background: var(--esszimmer); opacity: .45; transform: rotate(3deg)"></span>
+      <h1 style="position: relative; font-size: 40px; line-height: 1">Personen</h1>
+    </div>
+    <p class="tnum" style="font-size: 13px; color: var(--muted)">14 mit Namen, 9 noch ohne</p>
+  </header>
+
+  <section aria-label="Eine Person benennen" style="margin: 10px 14px 0; padding: 16px; border-radius: 20px; background: var(--ess-soft); box-shadow: inset 0 0 0 1px var(--ess-rule); display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; gap: 14px; align-items: center">
+      <span style="width: 88px; height: 88px; flex: none; border-radius: 50%; background: {{unknown}}; box-shadow: 0 0 0 3px var(--surface)"></span>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <h2 style="font-size: 28px; line-height: 1.05">Wer ist das?</h2>
+        <p class="tnum" style="font-size: 13.5px; color: var(--muted)">Auf 37 Fotos, zuletzt am 12. Oktober am Chiemsee</p>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px">
+      <sc-for list="{{crops}}" as="c" hint-placeholder-count="6">
+        <span role="img" aria-label="{{c.label}}" style="aspect-ratio: 1; border-radius: 50%; background: {{c.bg}}"></span>
+      </sc-for>
+    </div>
+    <label style="display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 650">
+      Name
+      <input type="text" placeholder="z. B. Tante Vroni" style="height: 46px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--ess-rule); font-size: 16px; font-weight: 400">
+    </label>
+    <div style="display: flex; gap: 8px">
+      <button type="button" class="btn-ink" style="flex: 1; height: 46px; border: 0; border-radius: 23px; background: var(--ink); color: var(--on-ink); font-weight: 650">Benennen</button>
+      <button type="button" class="btn-ghost" style="height: 46px; padding: 0 18px; border: 0; border-radius: 23px; background: transparent; box-shadow: inset 0 0 0 1.5px var(--ess-rule); font-weight: 650">Später</button>
+      <button type="button" class="btn-ghost" style="height: 46px; padding: 0 14px; border: 0; border-radius: 23px; background: transparent; box-shadow: inset 0 0 0 1.5px var(--ess-rule); font-weight: 650">Ausblenden</button>
+    </div>
+  </section>
+
+  <section aria-label="Zusammenführen" style="margin: 12px 14px 0; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule)">
+    <span style="display: flex; flex: none">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: {{nora}}; box-shadow: 0 0 0 2px var(--surface)"></span>
+      <span style="width: 40px; height: 40px; margin-left: -10px; border-radius: 50%; background: {{lenaYoung}}; box-shadow: 0 0 0 2px var(--surface)"></span>
+    </span>
+    <p style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.3"><b style="font-weight: 650">Auch Nora?</b> <span style="color: var(--muted)">12 Fotos aus der Kindheit</span></p>
+    <button type="button" class="btn-ghost" style="height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--surface-2); font-size: 14px; font-weight: 650">Ja</button>
+    <button type="button" class="btn-ghost" style="height: 36px; padding: 0 12px; border: 0; border-radius: 18px; background: transparent; font-size: 14px; font-weight: 650; color: var(--muted)">Nein</button>
+  </section>
+
+  <section aria-label="Benannte Personen" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 8px; padding: 20px 14px 0">
+    <sc-for list="{{people}}" as="p" hint-placeholder-count="6">
+      <a href="Phone-Suche.dc.html" class="who" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink)">
+        <span class="ring" style="width: 84px; height: 84px; border-radius: 50%; background: {{p.bg}}"></span>
+        <span style="display: flex; flex-direction: column; align-items: center; line-height: 1.2">
+          <span style="font-weight: 650">{{p.name}}</span>
+          <span class="tnum" style="font-size: 12.5px; color: var(--muted)">{{p.count}}</span>
+        </span>
+      </a>
+    </sc-for>
+  </section>
+
+  <nav aria-label="Bereiche" style="position: absolute; left: 0; right: 0; bottom: 0; height: 82px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 8px 8px 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); border-top: 1px solid var(--rule)">
+    <a href="Phone-Fotos.dc.html" class="tab" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 650">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>
+      Fotos
+    </a>
+    <a href="Phone-Personen.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink); font-size: 11.5px; font-weight: 700">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M15.5 4.8a3.4 3.4 0 0 1 0 6.4M18 14.8c1.9.7 3.1 2.4 3.5 5.2"></path></svg>
+      Personen
+      <span aria-hidden="true" style="position: relative; width: 26px; height: 6px"><span class="dab" style="inset: 0; background: var(--esszimmer); transform: rotate(-4deg)"></span></span>
+    </a>
+    <a href="Phone-Fotos.dc.html" class="tab" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 650">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg>
+      Orte
+    </a>
+    <a href="Phone-Fotos.dc.html" class="tab" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 650">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="7" width="17" height="13" rx="2"></rect><path d="M6.5 4h11"></path><path d="M3.5 16l4.5-4 4 3.5 3-2.5 5.5 4.5"></path></svg>
+      Alben
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"licht":{"editor":"enum","options":["mittag","morgen","abend","nacht","auto"],"default":"mittag"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    function face(o) {
+      var s = o.s || 1, x = o.x || 50, y = o.y || 46, L = [];
+      if (o.hat) L.push('radial-gradient(ellipse ' + (24 * s) + '% ' + (13 * s) + '% at ' + x + '% ' + (y - 17 * s) + '%, ' + o.hat + ' 0 95%, transparent 100%)');
+      L.push('radial-gradient(ellipse ' + (18 * s) + '% ' + (22 * s) + '% at ' + x + '% ' + y + '%, ' + o.skin + ' 0 96%, transparent 100%)');
+      L.push('radial-gradient(ellipse ' + (22 * s) + '% ' + (21 * s) + '% at ' + x + '% ' + (y - 9 * s) + '%, ' + o.hair + ' 0 96%, transparent 100%)');
+      L.push('radial-gradient(ellipse ' + (40 * s) + '% ' + (28 * s) + '% at ' + x + '% ' + (y + 56 * s) + '%, ' + o.shirt + ' 0 96%, transparent 100%)');
+      L.push(o.bg);
+      return L.join(', ');
+    }
+    function crop(p, bg) { return face({ s: 1.5, y: 56, skin: p.skin, hair: p.hair, shirt: p.shirt, hat: p.hat, bg: bg }); }
+    var vroni = { skin: '#E2B394', hair: '#B8834A', shirt: '#4C8A52' };
+    var bgs = ['linear-gradient(180deg, #A9C1DC, #E3DCD2)', 'linear-gradient(180deg, #C9D9B8, #8FB07A)', 'linear-gradient(180deg, #E7C9A8, #C99A6E)', 'linear-gradient(180deg, #BFCBE0, #EEF1F6)', 'linear-gradient(180deg, #D8C8E2, #B7A3CB)', 'linear-gradient(180deg, #F0D9A8, #D9B46A)'];
+    var P = [
+      { name: 'Ben', count: '3.881 Fotos', p: { skin: '#D9A585', hair: '#2E2420', shirt: '#2F5D8C' }, bg: bgs[0] },
+      { name: 'Nora', count: '2.950 Fotos', p: { skin: '#F0C9AE', hair: '#7A4A2B', shirt: '#3F6E8F' }, bg: bgs[2] },
+      { name: 'Oma', count: '1.204 Fotos', p: { skin: '#E8C0A4', hair: '#D9DCE2', shirt: '#7A2E3A' }, bg: bgs[3] },
+      { name: 'Clara', count: '611 Fotos', p: { skin: '#C98E6A', hair: '#1F1A1E', shirt: '#C8707A' }, bg: bgs[4] },
+      { name: 'Opa', count: '402 Fotos', p: { skin: '#E0B08E', hair: '#A7AAB2', shirt: '#5A6B3E' }, bg: bgs[1] },
+      { name: 'Tim', count: '288 Fotos', p: { skin: '#F2CDB4', hair: '#C9973F', shirt: '#E2AE1C' }, bg: bgs[5] }
+    ];
+    return {
+      licht: this.props.licht ?? 'mittag',
+      unknown: crop(vroni, 'linear-gradient(180deg, #A9C1DC, #E3DCD2 60%, #5F86A6 62%)'),
+      crops: bgs.map(function (b, i) { return { bg: face({ s: 1.4 - i * .04, x: 46 + i * 2, y: 56, skin: vroni.skin, hair: vroni.hair, shirt: vroni.shirt, bg: b }), label: 'Weiteres Foto derselben Person, ' + (i + 1) + ' von 6' }; }),
+      nora: crop(P[1].p, bgs[2]),
+      lenaYoung: face({ s: 1.6, y: 58, skin: '#F6D4BC', hair: '#9A6638', shirt: '#E9A3B5', bg: 'linear-gradient(180deg, #F0E6C8, #D9C79A)' }),
+      people: P.map(function (x) { return { name: x.name, count: x.count, bg: crop(x.p, x.bg) }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+/* Tokens (colours, type, textures of every style in the four lights) are not written here: build.ts puts the blocks
+   generated from shared/styles.ts in front of this file. What follows is how each style paints with them. */
+
+/* ---- Max Ernst (owner.theme = 'ernst'): the forest wall, the ring sun, decalcomania greens and the rust of "Europe after
+   the Rain". The same four lights, the Clarendon of the 19th-century novels he cut up for his collages, a frottage
+   grain on the ground, the painted dabs become strips of torn paper glued on and every underline a pencil rubbing
+   over wood. Cards are pasted-in engravings: square, with a hairline. The light is his ring sun. */
+:root[data-theme=ernst] body{background-image:var(--grain);background-size:240px 240px}
+:root[data-theme=ernst] .dab.stroke{border-radius:0;clip-path:none;transform:none!important;opacity:.95!important;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='10' preserveAspectRatio='none'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03 .9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -.6'/%3E%3C/filter%3E%3Crect width='80' height='10' filter='url(%23f)'/%3E%3C/svg%3E") 0 0/80px 100%;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='10' preserveAspectRatio='none'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03 .9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -.6'/%3E%3C/filter%3E%3Crect width='80' height='10' filter='url(%23f)'/%3E%3C/svg%3E") 0 0/80px 100%}
+:root[data-theme=ernst] [data-sun]{background:transparent!important;box-shadow:inset 0 0 0 3px var(--sun),0 0 0 1.5px color-mix(in oklab,var(--sun) 30%,transparent)!important}
+:root[data-theme=ernst] .dot[data-sun]{width:14px;height:14px;top:-14px;margin-left:-2px}
+:root[data-theme=ernst] .day h2{font-family:var(--font-display);font-weight:400;font-size:19px}
+:root[data-theme=ernst] .tile:not(.on)::after{box-shadow:inset 0 0 0 1px rgb(21 17 12 / .7),inset 0 0 0 3px rgb(243 238 223 / .28)}
+:root[data-theme=ernst] :is(.visit,.box,.search,.karte){box-shadow:inset 0 0 0 1px var(--paper-line),3px 3px 0 rgb(21 17 12 / .1)!important}
+:root[data-theme=ernst] h1,:root[data-theme=ernst] h2,:root[data-theme=ernst] h3{letter-spacing:.02em}
+:root[data-theme=ernst] .dab:not(.stroke){border-radius:0;animation:none!important;clip-path:polygon(0 30%,4% 0,23% 18%,47% 2%,70% 20%,92% 0,100% 40%,97% 100%,74% 84%,50% 100%,27% 82%,6% 100%)}
+
+/* Ernst and Magritte draw with straight edges: cards, fields and buttons lose the rounded corners of Monet's
+   pebbles (round marks such as the photo check stay round) */
+:is(:root[data-theme=ernst],:root[data-theme=magritte]) :is(.visit,.home,.box,.who,.nav,.search,.ghost,.sheet,.toast,.upcard,.karte,.bubble,[role=toolbar],.cover .pic,.serie,.searchpill,.pill,.hm,.set,.field,.chip,.chipb,.list,.blk,.btn,.style,.drop),:is(:root[data-theme=ernst],:root[data-theme=magritte]) :is(button,input,select,kbd):not(.check){border-radius:0!important}
+:root[data-theme=ernst] :is(.serie,.searchpill){box-shadow:inset 0 0 0 1px var(--paper-line),3px 3px 0 rgb(21 17 12 / .1)!important}
+:root[data-theme=magritte] :is(.serie,.searchpill){box-shadow:inset 0 0 0 1px var(--ink),inset 0 0 0 4px var(--surface),inset 0 0 0 5px var(--rule)!important}
+/* ---- René Magritte (owner.theme = 'magritte'): a clear day sky with its still clouds, the bowler hat's black, the
+   green apple as the accent, a red curtain. At night "The Empire of Light": a lamplit street under a faint day sky.
+   Titles in a calm book serif, set in italic; the dates written in the school hand of the caption under the pipe.
+   The months are clouds, every underline a strip of sky, cards and photos framed, the light a green apple. */
+:root[data-theme=magritte] body{background-image:var(--sky);background-repeat:repeat-y;background-size:100% auto}
+:root[data-theme=magritte][data-light=nacht] body{background-repeat:no-repeat}
+:root[data-theme=magritte] .dab.stroke{border-radius:0;transform:none!important;opacity:1!important;background:radial-gradient(ellipse 14% 34% at 26% 56%,var(--cloud) 92%,transparent 100%),radial-gradient(ellipse 10% 30% at 36% 44%,var(--cloud) 92%,transparent 100%),radial-gradient(ellipse 9% 26% at 72% 58%,var(--cloud) 92%,transparent 100%),linear-gradient(var(--sky-top),var(--sky-low))!important;box-shadow:0 0 0 1px var(--ink)}
+:root[data-theme=magritte] .dab.stroke+.dab.stroke{display:none}
+:root[data-theme=magritte] [data-sun]{background:radial-gradient(circle at 35% 32%,#C9E27A,#5E9A2E 55%,#2C5716)!important;border-radius:50% 50% 46% 46% / 52% 52% 48% 48%!important}
+:root[data-theme=magritte] [data-sun]:not(.dot){position:relative}
+:root[data-theme=magritte] [data-sun]::after{content:"";position:absolute;width:48%;height:30%;right:-8%;top:-16%;background:#4F8F2A;border-radius:0 100% 0 100%;transform:rotate(-20deg)}
+:root[data-theme=magritte] .tile:not(.on)::after{box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--ink) 65%,transparent)}
+:root[data-theme=magritte] :is(.visit,.box,.search,.karte){box-shadow:inset 0 0 0 1px var(--ink),inset 0 0 0 4px var(--surface),inset 0 0 0 5px var(--rule)!important}
+:root[data-theme=magritte] .day h2{font-family:var(--font-caption);font-style:normal;font-weight:400;font-size:23px}
+:root[data-theme=magritte] .wide .day h2{font-size:31px}
+:root[data-theme=magritte] h1,:root[data-theme=magritte] h2,:root[data-theme=magritte] h3{font-style:italic}
+:root[data-theme=magritte] .dab{transform:none!important;border-radius:999px}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--ink);background:var(--ground);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);font-weight:400;margin:0;letter-spacing:0}
+p{margin:0}
+.tnum{font-variant-numeric:tabular-nums}
+.dab{position:absolute;border-radius:999px}
+input::placeholder{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* ---- Motion (lib/motion.ts). A class on the root names the kind of change while its view transition runs. */
+@property --vt-r{syntax:"<length>";inherits:false;initial-value:0px}
+::view-transition-old(*),::view-transition-new(*){mix-blend-mode:normal}
+::view-transition-group(*){animation-duration:.213s;animation-timing-function:cubic-bezier(.25,.8,.25,1)}
+::view-transition-old(hero),::view-transition-new(hero),::view-transition-old(stage),::view-transition-new(stage){height:100%;object-fit:cover}
+
+/* Impression: the tile grows into the viewer; the picture is colour first and comes into focus, the room recedes into haze */
+:root.vt-open::view-transition-group(hero){animation-duration:.373s;animation-timing-function:cubic-bezier(.2,.75,.15,1)}
+:root.vt-open::view-transition-old(hero){animation:.187s ease-out both vt-out}
+:root.vt-open::view-transition-new(hero){animation:.413s cubic-bezier(.3,.6,.2,1) both vt-impression}
+:root.vt-open::view-transition-old(root){animation:.3s ease-in both vt-recede}
+:root.vt-open::view-transition-new(root){animation:.267s ease-out both vt-in}
+/* closing, the picture loosens into its colours and settles back into its tile */
+:root.vt-close::view-transition-group(hero){animation-duration:.333s;animation-timing-function:cubic-bezier(.3,.7,.2,1)}
+:root.vt-close::view-transition-old(hero){animation:.333s ease-in both vt-loosen}
+:root.vt-close::view-transition-new(hero){animation:.333s ease-out both vt-settle}
+:root.vt-close::view-transition-old(root){animation:.213s ease-in both vt-out}
+:root.vt-close::view-transition-new(root){animation:.3s ease-out both vt-emerge}
+
+/* Lichtwechsel: the next photo is the next canvas of a series; a band of light passes over the motif */
+:root:is(.vt-next,.vt-prev,.vt-sink) [data-stage]{view-transition-name:stage}
+/* the details sheet is its own layer after the picture, so the picture never passes over it (on the phone they overlap) */
+:root:is(.vt-open,.vt-close,.vt-next,.vt-prev,.vt-sink) [data-vt=sheet]{view-transition-name:sheet}
+/* the original (often HDR, always large) never goes into a transition's snapshot */
+:root:is(.vt-open,.vt-close,.vt-next,.vt-prev,.vt-sink) [data-original]{visibility:hidden}
+:root.vt-open::view-transition-new(sheet){animation:.4s .08s cubic-bezier(.2,.8,.25,1) both vt-rise}
+:root.vt-close::view-transition-old(sheet){animation:.2s ease-in both vt-out}
+@keyframes vt-rise{from{opacity:0;transform:translateY(40px)}}
+:root:is(.vt-next,.vt-prev,.vt-sink)::view-transition-group(stage){animation-duration:.533s}
+:root.vt-next::view-transition-new(stage){-webkit-mask-image:linear-gradient(to left,#000 40%,transparent 60%);mask-image:linear-gradient(to left,#000 40%,transparent 60%);-webkit-mask-size:250% 100%;mask-size:250% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;animation:.533s cubic-bezier(.45,.1,.3,1) both vt-sweep,.6s ease-out both vt-sunlit}
+:root.vt-prev::view-transition-new(stage){-webkit-mask-image:linear-gradient(to right,#000 40%,transparent 60%);mask-image:linear-gradient(to right,#000 40%,transparent 60%);-webkit-mask-size:250% 100%;mask-size:250% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;animation:.533s cubic-bezier(.45,.1,.3,1) both vt-sweep-back,.6s ease-out both vt-sunlit}
+:root:is(.vt-next,.vt-prev)::view-transition-old(root){animation:none}
+:root.vt-next::view-transition-new(root){-webkit-mask-image:linear-gradient(to left,#000 40%,transparent 60%);mask-image:linear-gradient(to left,#000 40%,transparent 60%);-webkit-mask-size:250% 100%;mask-size:250% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;animation:.533s cubic-bezier(.45,.1,.3,1) both vt-sweep}
+:root.vt-prev::view-transition-new(root){-webkit-mask-image:linear-gradient(to right,#000 40%,transparent 60%);mask-image:linear-gradient(to right,#000 40%,transparent 60%);-webkit-mask-size:250% 100%;mask-size:250% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;animation:.533s cubic-bezier(.45,.1,.3,1) both vt-sweep-back}
+:root:is(.vt-next,.vt-prev)::view-transition-old(stage){animation:.533s ease-in both vt-dusk}
+/* Teich: a deleted photo sinks into the pond, the next one comes up in its place */
+:root.vt-sink::view-transition-old(stage){transform-origin:50% 100%;animation:.4s cubic-bezier(.5,0,.75,.4) both vt-sink}
+:root.vt-sink::view-transition-new(stage){animation:.467s .147s cubic-bezier(.3,.6,.2,1) both vt-impression}
+
+/* Dunst: between sections the page passes through haze; the frame stays where it is */
+:root.vt-haze [data-vt=header]{view-transition-name:header}
+:root.vt-haze [data-vt=side]{view-transition-name:side}
+:root.vt-haze [data-vt=tabs]{view-transition-name:tabs}
+:root.vt-haze::view-transition-old(root){animation:.173s ease-in both vt-haze-out}
+:root.vt-haze::view-transition-new(root){animation:.28s .04s cubic-bezier(.2,.7,.2,1) both vt-haze-in}
+
+/* Rouen: a new light washes over the same motif from where the sun stands */
+:root.vt-light::view-transition-old(root){animation:none}
+:root.vt-light::view-transition-new(root){-webkit-mask-image:radial-gradient(circle at var(--vt-x,50%) var(--vt-y,0),#000 var(--vt-r),transparent calc(var(--vt-r) + 36vmax));mask-image:radial-gradient(circle at var(--vt-x,50%) var(--vt-y,0),#000 var(--vt-r),transparent calc(var(--vt-r) + 36vmax));animation:.833s cubic-bezier(.35,.1,.25,1) both vt-wash}
+
+@keyframes vt-in{from{opacity:0}}
+@keyframes vt-out{to{opacity:0}}
+@keyframes vt-impression{from{opacity:0;filter:blur(16px) saturate(1.8) contrast(.82) brightness(1.06)}30%{opacity:1}55%{filter:blur(4px) saturate(1.3) contrast(.95)}to{filter:none}}
+@keyframes vt-recede{to{opacity:0;filter:blur(8px) saturate(.8);transform:scale(.97)}}
+@keyframes vt-loosen{to{opacity:0;filter:blur(7px) saturate(1.5)}}
+@keyframes vt-settle{from{opacity:0;filter:blur(8px) saturate(1.7)}}
+@keyframes vt-emerge{from{opacity:0;filter:blur(8px);transform:scale(1.015)}}
+@keyframes vt-sweep{from{-webkit-mask-position:0 0;mask-position:0 0}to{-webkit-mask-position:100% 0;mask-position:100% 0}}
+@keyframes vt-sweep-back{from{-webkit-mask-position:100% 0;mask-position:100% 0}to{-webkit-mask-position:0 0;mask-position:0 0}}
+@keyframes vt-sunlit{from{filter:brightness(1.3) saturate(1.5) sepia(.3)}to{filter:none}}
+@keyframes vt-dusk{85%{opacity:1;filter:brightness(.72) saturate(1.35) hue-rotate(-14deg)}to{opacity:0;filter:brightness(.6) saturate(1.2) hue-rotate(-18deg)}}
+@keyframes vt-sink{30%{transform:translateY(1%) scale(.98,.96);filter:saturate(.7)}to{opacity:0;transform:translateY(18%) scale(.7,.5);filter:blur(10px) saturate(.2) brightness(.8)}}
+@keyframes vt-haze-out{to{opacity:0;filter:blur(6px) brightness(1.04)}}
+@keyframes vt-haze-in{from{opacity:0;filter:blur(6px) brightness(1.06)}}
+@keyframes vt-wash{from{--vt-r:-36vmax}to{--vt-r:150vmax}}

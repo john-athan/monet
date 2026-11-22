@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Monet: Fotos am Telefon</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#3D6FB0}a:hover{color:#22305E}
+.m{--ground:#EEF2EA;--surface:#FAFBF5;--surface-2:#E0E8DA;--surface-3:#CFDAC8;--ink:#22305E;--muted:#55617E;--rule:#D2DCCB;--sun:#EE7A2F;--sun-ink:#A44A12;--water:#3D6FB0;--water-soft:#D9E4F1;--on-ink:#FAFBF5;--glass:rgb(250 251 245 / .86);--veil:rgb(34 48 94 / .52);--deep:#1A1E44;--shadow:0 1px 2px rgb(34 48 94 / .1),0 14px 34px -14px rgb(34 48 94 / .3);--teich:#2F7F86;--esszimmer:#E2AE1C;--garten:#4C8A52;--atelier:#C8707A;--font-display:Didot,"Bodoni 72","Bodoni MT","Iowan Old Style",ui-serif,Georgia,serif;--font-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;color:var(--ink);background:var(--ground);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;color-scheme:light}
+.m[data-light=morgen]{--ground:#F5ECEB;--surface:#FCF8F6;--surface-2:#ECDFE1;--surface-3:#E0CDD1;--ink:#2E2B5C;--muted:#625C86;--rule:#E2D3D7;--sun:#E8743B;--sun-ink:#A2461A;--water:#5A6FB8;--water-soft:#E1E3F3;--on-ink:#FCF8F6;--glass:rgb(252 248 246 / .86);--veil:rgb(46 43 92 / .5);--shadow:0 1px 2px rgb(46 43 92 / .1),0 14px 34px -14px rgb(46 43 92 / .3)}
+.m[data-light=abend]{--ground:#F6E4D5;--surface:#FDF4EC;--surface-2:#EFD5C3;--surface-3:#E5C2AC;--ink:#3B2553;--muted:#6C5470;--rule:#E8CDBA;--sun:#D9532A;--sun-ink:#9E3513;--water:#5E58A8;--water-soft:#E9DFF0;--on-ink:#FDF4EC;--glass:rgb(253 244 236 / .86);--veil:rgb(59 37 83 / .5);--shadow:0 1px 2px rgb(59 37 83 / .1),0 14px 34px -14px rgb(59 37 83 / .3)}
+.m[data-light=nacht]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;color-scheme:dark}
+@media (prefers-color-scheme: dark){.m[data-light=auto]{--ground:#1C2049;--surface:#252A58;--surface-2:#2F3569;--surface-3:#3A417A;--ink:#F2EBE1;--muted:#B0ABCF;--rule:#363D72;--sun:#FF9A52;--sun-ink:#FFB07A;--water:#9DB3EE;--water-soft:#2E3A72;--on-ink:#1C2049;--glass:rgb(37 42 88 / .86);--veil:rgb(12 14 40 / .55);--deep:#12153A;--shadow:0 1px 2px rgb(8 10 30 / .4),0 18px 44px -18px rgb(8 10 30 / .8);--teich:#6FC3C4;--esszimmer:#F5CF4E;--garten:#86C48A;--atelier:#F0A0A8;color-scheme:dark}}
+.m,.m *{box-sizing:border-box}
+.m a{text-decoration:none}
+.m button,.m input{font:inherit;color:inherit}
+.m :focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.m h1,.m h2,.m h3{font-family:var(--font-display);font-weight:400;margin:0;letter-spacing:0}
+.m p{margin:0}
+.m .tnum{font-variant-numeric:tabular-nums}
+.m .dab{position:absolute;border-radius:999px}
+.m .tile:hover{filter:brightness(1.06) saturate(1.05)}
+.m .tab{color:var(--muted)}
+.m .tab:hover{color:var(--ink)}
+.m .search:hover{box-shadow:inset 0 0 0 1.5px var(--water),var(--shadow)}
+.m .serie:hover .hang{transform:translateY(-1px)}
+</style>
+</helmet>
+<div class="m" data-light="{{licht}}" style="position: relative; width: 390px; height: 844px; overflow: hidden">
+
+  <header style="padding: 22px 18px 6px; display: flex; flex-direction: column; gap: 4px">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between">
+      <div style="position: relative">
+        <span aria-hidden="true" class="dab" style="left: -2px; bottom: 2px; width: 70px; height: 10px; background: var(--teich); opacity: .55; transform: rotate(-3deg)"></span>
+        <span aria-hidden="true" class="dab" style="left: 40px; bottom: -1px; width: 46px; height: 8px; background: var(--water); opacity: .45; transform: rotate(4deg)"></span>
+        <h1 style="position: relative; font-size: 40px; line-height: 1">Fotos</h1>
+      </div>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--surface-2); font-size: 14px; font-weight: 650">Auswählen</button>
+    </div>
+    <p style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.6 4.5 4.5 0 0 0 7 18.5z"></path><path d="M12 15v-5M9.5 12.5 12 10l2.5 2.5"></path></svg>
+      Bis 14:32 alles gesichert, drei Fotos folgen
+    </p>
+  </header>
+
+  <a href="Phone-Suche.dc.html" class="serie" aria-label="Serie: Oberstdorf im Winter, sechs Winter von 2019 bis 2025" style="display: flex; flex-direction: column; gap: 8px; margin: 10px 14px 4px 14px; padding: 12px 12px 10px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule); color: var(--ink)">
+    <span style="display: flex; flex-direction: column; line-height: 1.15">
+      <span style="font-family: var(--font-display); font-size: 22px">Oberstdorf im Winter</span>
+      <span class="tnum" style="font-size: 12.5px; color: var(--muted)">Dieselben Berge, sechs Winter</span>
+    </span>
+    <span style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px">
+      <sc-for list="{{serie}}" as="s" hint-placeholder-count="6">
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 3px">
+          <span class="hang" style="width: 100%; aspect-ratio: 4 / 5; border-radius: 3px; background: {{s.bg}}; box-shadow: 0 1px 2px rgb(34 48 94 / .18)"></span>
+          <span class="tnum" style="font-size: 11px; color: var(--muted)">{{s.year}}</span>
+        </span>
+      </sc-for>
+    </span>
+  </a>
+
+  <main style="padding-right: 22px">
+    <sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+      <section>
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 14px 14px 7px">
+          <h2 style="font-family: var(--font-body); font-size: 16px; font-weight: 700; color: {{sec.sign}}">{{sec.title}}</h2>
+          <span style="font-size: 13px; color: var(--muted)">{{sec.place}}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px">
+          <sc-for list="{{sec.photos}}" as="p" hint-placeholder-count="6">
+            <a href="Phone-Foto.dc.html" class="tile" aria-label="{{p.label}}" style="position: relative; display: block; aspect-ratio: 1; background: {{p.bg}}">
+              <sc-if value="{{p.burst}}" hint-placeholder-val="{{false}}">
+                <span class="tnum" style="position: absolute; left: 5px; bottom: 5px; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px 2px 4px; border-radius: 9px; background: var(--veil); color: #FBF8F2; font-size: 11px; font-weight: 650">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="13" height="13" rx="2"></rect><path d="M4 16V5a1 1 0 0 1 1-1h11"></path></svg>{{p.burst}}
+                </span>
+              </sc-if>
+              <sc-if value="{{p.video}}" hint-placeholder-val="{{false}}">
+                <span class="tnum" style="position: absolute; right: 5px; bottom: 5px; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px 2px 4px; border-radius: 9px; background: var(--veil); color: #FBF8F2; font-size: 11px; font-weight: 650">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5l13 7.5-13 7.5z"></path></svg>{{p.video}}
+                </span>
+              </sc-if>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+  </main>
+
+  <div role="img" aria-label="Pinselband: die ganze Bibliothek, oben November 2026, unten Januar 2009" style="position: absolute; right: 5px; top: 312px; bottom: 172px; width: 12px">
+    <sc-for list="{{dabs}}" as="d" hint-placeholder-count="600">
+      <span class="dab" style="{{d.s}}"></span>
+    </sc-for>
+  </div>
+  <div style="position: absolute; right: 1px; top: 300px; display: flex; align-items: center; gap: 5px">
+    <span class="tnum" style="padding: 3px 9px; border-radius: 11px; background: var(--ink); color: var(--on-ink); font-size: 12px; font-weight: 650">Nov. 2026</span>
+    <span style="width: 18px; height: 18px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 2.5px var(--ground)"></span>
+  </div>
+
+  <a href="Phone-Suche.dc.html" class="search" style="position: absolute; left: 14px; right: 14px; bottom: 94px; height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-radius: 25px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow); color: var(--muted); font-size: 15px">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5L20.5 20.5"></path></svg>
+    Personen, Orte, Dinge, Text
+  </a>
+
+  <nav aria-label="Bereiche" style="position: absolute; left: 0; right: 0; bottom: 0; height: 82px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 8px 8px 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); border-top: 1px solid var(--rule)">
+    <a href="Phone-Fotos.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink); font-size: 11.5px; font-weight: 700">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>
+      Fotos
+      <span aria-hidden="true" style="position: relative; width: 26px; height: 6px"><span class="dab" style="inset: 0; background: var(--teich); transform: rotate(-4deg)"></span></span>
+    </a>
+    <a href="Phone-Personen.dc.html" class="tab" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 650">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M15.5 4.8a3.4 3.4 0 0 1 0 6.4M18 14.8c1.9.7 3.1 2.4 3.5 5.2"></path></svg>
+      Personen
+    </a>
+    <a href="Phone-Fotos.dc.html" class="tab" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 650">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg>
+      Orte
+    </a>
+    <a href="Phone-Fotos.dc.html" class="tab" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 650">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="7" width="17" height="13" rx="2"></rect><path d="M6.5 4h11"></path><path d="M3.5 16l4.5-4 4 3.5 3-2.5 5.5 4.5"></path></svg>
+      Alben
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"licht":{"editor":"enum","options":["mittag","morgen","abend","nacht","auto"],"default":"mittag"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var licht = this.props.licht ?? 'mittag';
+    var night = licht === 'nacht';
+    var P = [
+      ['#9FB0CF', '#C9D3E6', '#7D7BB8'], ['#AEB9D2', '#E1E6F0', '#8C86BE'], ['#B9C49A', '#E5D9C8', '#9DAFD0'],
+      ['#A8C886', '#F0C9D2', '#E8E2B0'], ['#86B86A', '#F2D46B', '#C9A3D9'], ['#7DAE5E', '#E9C24A', '#5E92C8'],
+      ['#D9B44E', '#8DBB6A', '#4E86C2'], ['#3F7CB8', '#7FC2D6', '#F0D18A'], ['#BFA562', '#8EAE6B', '#D88E5A'],
+      ['#CC7A3E', '#E2A84F', '#8E5A8E'], ['#8F8A9A', '#B9A27E', '#6F7FA8'], ['#B8C6DE', '#E8ECF4', '#8B84C0']
+    ];
+    function rnd(i) { var x = Math.sin(i * 12.9898 + 4.1) * 43758.5453; return x - Math.floor(x); }
+    var list = [];
+    for (var y = 2026; y >= 2009; y--) for (var m = 11; m >= 0; m--) { if (y === 2026 && m > 10) continue; list.push({ y: y, m: m }); }
+    var N = list.length, dabs = [];
+    list.forEach(function (it, t) {
+      var i = it.y * 12 + it.m, sparse = it.y < 2012 && rnd(i) < 0.4;
+      var trip = it.m >= 5 && it.m <= 8 && rnd(i + 1) > 0.8;
+      var cols = trip ? ['#2F6FAE', '#7FC2D6', '#F0D18A'] : P[it.m];
+      var count = sparse ? 1 : 3;
+      for (var k = 0; k < count; k++) {
+        var a = rnd(i * 7 + k), b = rnd(i * 13 + k), c = rnd(i * 17 + k);
+        dabs.push({ s: 'top: ' + ((t + a * 1.4 - 0.2) / N * 100).toFixed(2) + '%; left: ' + (b * 5).toFixed(1) + 'px; width: ' + (7 + c * 4).toFixed(1) + 'px; height: ' + (2 + a * 1.4).toFixed(1) + 'px; background: ' + cols[k % 3] + '; opacity: ' + (sparse ? .45 : .95) + '; transform: rotate(' + ((c - 0.5) * 12).toFixed(1) + 'deg)' });
+      }
+    });
+    function face(o) {
+      var s = o.s || 1, x = o.x || 50, y = o.y || 46, L = [];
+      if (o.hat) L.push('radial-gradient(ellipse ' + (24 * s) + '% ' + (13 * s) + '% at ' + x + '% ' + (y - 17 * s) + '%, ' + o.hat + ' 0 95%, transparent 100%)');
+      L.push('radial-gradient(ellipse ' + (18 * s) + '% ' + (22 * s) + '% at ' + x + '% ' + y + '%, ' + o.skin + ' 0 96%, transparent 100%)');
+      L.push('radial-gradient(ellipse ' + (22 * s) + '% ' + (21 * s) + '% at ' + x + '% ' + (y - 9 * s) + '%, ' + o.hair + ' 0 96%, transparent 100%)');
+      L.push('radial-gradient(ellipse ' + (40 * s) + '% ' + (28 * s) + '% at ' + x + '% ' + (y + 56 * s) + '%, ' + o.shirt + ' 0 96%, transparent 100%)');
+      L.push(o.bg);
+      return L.join(', ');
+    }
+    var S = {
+      lake: 'radial-gradient(ellipse 18% 7% at 30% 64%, #7FAE5E 0 95%, transparent 100%), radial-gradient(circle at 31% 62%, #F2B8C6 0 2.6%, transparent 3.2%), radial-gradient(ellipse 14% 6% at 72% 80%, #6E9F55 0 95%, transparent 100%), radial-gradient(circle at 73% 78%, #F7E4EA 0 2.2%, transparent 2.8%), linear-gradient(180deg, #4E7E78 0%, #3D6A80 55%, #2E5571 100%)',
+      lakeView: 'linear-gradient(180deg, transparent 0 52.0%, #5F86A6 52.0%, #3B6286 100%), conic-gradient(from 134deg at 30% 36.0%, #6A7C99 0 92deg, transparent 92deg), conic-gradient(from 128deg at 68% 40.0%, #8696B0 0 104deg, transparent 104deg), linear-gradient(180deg, #A9C1DC 0%, #E3DCD2 44%, #5F86A6 52%, #3B6286 100%)',
+      lakeEve: 'radial-gradient(circle at 62% 44%, #F7A35C 0 6%, transparent 6.5%), linear-gradient(180deg, transparent 0 53.0%, #9A7FA0 53.0%, #4F5A84 100%), conic-gradient(from 134deg at 30% 40.0%, #5A587A 0 92deg, transparent 92deg), linear-gradient(180deg, #E7B58E 0%, #F0CFA8 42%, #9A7FA0 53%, #4F5A84 100%)',
+      meadow: 'radial-gradient(circle at 24% 78%, #E9A3B5 0 2.5%, transparent 3%), radial-gradient(circle at 62% 86%, #F2D06B 0 2%, transparent 2.5%), radial-gradient(circle at 80% 72%, #E9A3B5 0 2%, transparent 2.5%), linear-gradient(180deg, #BCD3E6 0%, #DCE6EE 38%, #A3BE74 40%, #6F9446 100%)',
+      autumn: 'radial-gradient(circle at 25% 30%, #E39A4A 0 18%, transparent 19%), radial-gradient(circle at 70% 25%, #C9622E 0 20%, transparent 21%), radial-gradient(circle at 50% 45%, #B9472A 0 14%, transparent 15%), linear-gradient(180deg, #D9C4A0 0%, #8C6A45 70%, #5E4630 100%)',
+      night: 'radial-gradient(circle at 18% 68%, #FFC86B 0 2.6%, transparent 3.2%), radial-gradient(circle at 34% 60%, #FFD98F 0 2%, transparent 2.6%), radial-gradient(circle at 58% 70%, #FFB45A 0 2.4%, transparent 3%), radial-gradient(circle at 80% 56%, #FFE2A8 0 1.8%, transparent 2.4%), linear-gradient(180deg, #23306A 0%, #3A3F78 55%, #252B58 56%, #1A1E44 100%)',
+      interior: 'radial-gradient(circle at 72% 26%, #FFE4B0 0 6%, rgb(255 210 140 / .5) 14%, transparent 30%), linear-gradient(180deg, #B98A60 0%, #8A5C3E 62%, #5A3A2A 63%, #4A3024 100%)',
+      cake: 'radial-gradient(circle at 44% 30%, #FFB347 0 2.2%, transparent 2.8%), radial-gradient(circle at 56% 30%, #FFB347 0 2.2%, transparent 2.8%), radial-gradient(ellipse 30% 9% at 50% 44%, #F6EDE2 0 95%, transparent 100%), radial-gradient(ellipse 30% 20% at 50% 56%, #C98F6A 0 95%, transparent 100%), linear-gradient(180deg, #6B4A3A, #3E2A22)',
+      receipt: 'linear-gradient(90deg, #8E8273 0 24%, transparent 24% 76%, #8E8273 76%), repeating-linear-gradient(180deg, transparent 0 10px, rgb(40 40 70 / .3) 10px 11.5px, transparent 11.5px 16px), linear-gradient(#F3EEE4, #F3EEE4)',
+      haystack: 'radial-gradient(ellipse 22% 18% at 40% 68%, #D9A24E 0 95%, transparent 100%), radial-gradient(ellipse 12% 14% at 40% 52%, #C78E3F 0 95%, transparent 100%), linear-gradient(180deg, #F2C9A0 0%, #E8B48A 45%, #B7A35C 52%, #8E7F45 100%)',
+      market: 'radial-gradient(circle at 22% 70%, #D94F3A 0 7%, transparent 7.5%), radial-gradient(circle at 40% 74%, #F0A23A 0 7%, transparent 7.5%), radial-gradient(circle at 60% 70%, #8DB34E 0 7%, transparent 7.5%), radial-gradient(circle at 78% 74%, #D94F3A 0 7%, transparent 7.5%), linear-gradient(180deg, #E9E1D3 0 30%, #C8553D 30% 38%, #F2EDE4 38% 58%, #7B5A3F 58% 100%)'
+    };
+    var winterSky = ['#BCC9DA', '#C9C3DA', '#B7C7DE', '#D2C9D6', '#C3CEDE', '#CFC6DD'];
+    var serie = ['2019', '2020', '2021', '2022', '2023', '2025'].map(function (yr, i) {
+      var sky = winterSky[i];
+      return { year: yr, bg: 'linear-gradient(180deg, transparent 0 62%, #F4F6FA 62%, #D9E0EB 100%), conic-gradient(from 134deg at ' + (30 + i * 3) + '% ' + (30 + i) + '%, #7E8BA0 0 92deg, transparent 92deg), conic-gradient(from 128deg at ' + (70 - i * 2) + '% ' + (40 - i) + '%, #A3ACC6 0 104deg, transparent 104deg), linear-gradient(180deg, ' + sky + ' 0%, #EEF1F6 62%)' };
+    });
+    var nora = face({ skin: '#F0C9AE', hair: '#7A4A2B', shirt: '#3F6E8F', bg: 'linear-gradient(180deg, #E8D4C0, #C9A88A)' });
+    var ben = face({ skin: '#D9A585', hair: '#2E2420', shirt: '#C2553A', bg: 'linear-gradient(180deg, #A9C1DC, #E3DCD2 60%, #5F86A6 62%)' });
+    return {
+      licht: licht,
+      dabs: dabs,
+      serie: serie,
+      sections: [
+        { title: 'Heute', place: 'München', sign: night ? '#F2A08A' : '#9E3B22', photos: [
+          { bg: S.market, label: 'Foto von heute, Viktualienmarkt' },
+          { bg: nora, label: 'Foto von heute, Nora' },
+          { bg: S.cake, label: 'Foto von heute, Kuchen' },
+          { bg: S.interior, label: 'Video von heute, 42 Sekunden', video: '0:42' },
+          { bg: S.night, label: 'Foto von heute Abend, München' }
+        ] },
+        { title: 'Sonntag, 12. Oktober', place: 'Chiemsee', sign: night ? '#8FD0CF' : '#2A6468', photos: [
+          { bg: S.lakeView, label: 'Sieben Aufnahmen in Folge, Chiemsee', burst: '7' },
+          { bg: S.lake, label: 'Foto, Seerosen am Ufer' },
+          { bg: ben, label: 'Foto, Ben am Chiemsee' },
+          { bg: S.autumn, label: 'Foto, Herbstlaub' },
+          { bg: S.meadow, label: 'Foto, Wiese' },
+          { bg: S.haystack, label: 'Foto, Heuballen' },
+          { bg: S.lakeEve, label: 'Foto, Sonnenuntergang am See' },
+          { bg: nora, label: 'Foto, Nora' },
+          { bg: S.lake, label: 'Foto, Seerosen' }
+        ] },
+        { title: 'Dienstag, 11. November', place: 'München', sign: night ? '#B9B4F0' : '#3D3A78', photos: [
+          { bg: S.receipt, label: 'Foto, Quittung' },
+          { bg: S.night, label: 'Foto, Stadt bei Nacht' },
+          { bg: S.autumn, label: 'Foto, Englischer Garten' }
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

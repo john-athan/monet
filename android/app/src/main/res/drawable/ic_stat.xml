@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status bar icon: the bridge silhouette of ic_launcher_monochrome.xml (the mark of app/client/icons/icon.svg) fitted
+     to 24 dp, white as Android wants it, lines thickened so they survive at this size. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <group android:scaleX="0.6" android:scaleY="0.6" android:translateX="0" android:translateY="0">
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.56" android:strokeLineCap="round" android:pathData="M0.6,22.73Q2.82,19.63 5.88,17.38Q8.95,15.12 12.57,13.94Q16.19,12.75 20,12.75Q23.81,12.75 27.43,13.94Q31.05,15.12 34.12,17.38Q37.18,19.63 39.4,22.73"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" android:strokeLineCap="round" android:pathData="M2.2,13.71Q6.02,10.74 10.59,9.17Q15.16,7.6 20,7.6Q24.84,7.6 29.41,9.17Q33.98,10.74 37.8,13.71"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="0.72" android:strokeLineCap="round" android:pathData="M2.2,16.83Q5.12,14.2 8.67,12.53Q12.23,10.86 16.11,10.29Q20,9.71 23.89,10.29Q27.77,10.86 31.33,12.53Q34.88,14.2 37.8,16.83"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.12" android:strokeLineCap="round" android:pathData="M2.4,19.7L2.4,13.05"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.12" android:strokeLineCap="round" android:pathData="M7.6,15.59L7.6,9.94"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.12" android:strokeLineCap="round" android:pathData="M13.4,13.11L13.4,7.95"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.12" android:strokeLineCap="round" android:pathData="M20,12.2L20,7.2"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.12" android:strokeLineCap="round" android:pathData="M26.6,13.11L26.6,7.95"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.12" android:strokeLineCap="round" android:pathData="M32.4,15.59L32.4,9.94"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.12" android:strokeLineCap="round" android:pathData="M37.6,19.7L37.6,13.05"/>
+        <path android:fillColor="#FFFFFFFF" android:pathData="M29.88,30.6L30.54,31.83Q29.64,31.87 28.74,31.83Q27.84,31.79 27.04,31.66Q26.25,31.54 25.66,31.34Q25.06,31.15 24.74,30.91Q24.41,30.68 24.4,30.42Q24.39,30.17 24.68,29.93Q24.98,29.69 25.55,29.49Q26.13,29.29 26.91,29.16Q27.69,29.03 28.58,28.98Q29.48,28.93 30.38,28.97Q31.28,29 32.08,29.13Q32.88,29.25 33.49,29.44Q34.09,29.63 34.43,29.86Q34.77,30.1 34.8,30.35Q34.83,30.61 34.54,30.85Q34.26,31.09 33.7,31.29Q33.14,31.49 32.37,31.63Z"/>
+        <path android:fillColor="#FFFFFFFF" android:pathData="M8.71,33.57L11.9,34.8Q11.06,35 10.03,35.1Q9,35.2 7.92,35.2Q6.83,35.2 5.81,35.08Q4.79,34.97 3.97,34.77Q3.14,34.56 2.61,34.29Q2.07,34.01 1.89,33.7Q1.71,33.39 1.9,33.08Q2.09,32.77 2.64,32.5Q3.19,32.22 4.02,32.02Q4.85,31.82 5.87,31.71Q6.9,31.6 7.98,31.6Q9.07,31.6 10.09,31.71Q11.12,31.81 11.96,32.01Q12.79,32.22 13.34,32.49Q13.9,32.76 14.09,33.07Q14.29,33.38 14.12,33.69Q13.94,34 13.41,34.28Z"/>
+        <path android:fillColor="#FFFFFFFF" android:pathData="M21.06,36.58L17.31,37.37Q16.73,37.15 16.45,36.88Q16.16,36.61 16.2,36.33Q16.25,36.05 16.61,35.79Q16.97,35.53 17.6,35.32Q18.24,35.12 19.08,34.99Q19.91,34.85 20.85,34.82Q21.79,34.78 22.72,34.83Q23.64,34.89 24.45,35.04Q25.25,35.19 25.84,35.41Q26.43,35.63 26.72,35.9Q27.02,36.16 27,36.44Q26.97,36.72 26.63,36.98Q26.28,37.25 25.66,37.46Q25.03,37.67 24.2,37.8Q23.37,37.94 22.44,37.98Q21.5,38.02 20.57,37.97Q19.64,37.92 18.83,37.77Z"/>
+    </group>
+</vector>

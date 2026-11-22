@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Garden above, pond below, in case a launcher shows more than the foreground covers. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v60.5h-108z" android:fillColor="#4C8A52"/>
+    <path android:pathData="M0,60.5h108v47.5h-108z" android:fillColor="#3D6FB0"/>
+</vector>

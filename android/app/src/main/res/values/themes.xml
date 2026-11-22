@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose paints the ground itself; the platform window only avoids a white flash. -->
+    <style name="Theme.Monet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFEEF2EA</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>
