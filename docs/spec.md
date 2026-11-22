@@ -2,7 +2,8 @@
 
 Monet replaces Google Photos for a household: everyone has their own library and sees everyone else's (every
 row carries `owner_id`). Beside the photos it keeps documents, sheets and slides for viewing and organising, all in
-one tree of folders, the Ablage: `app/docs/files.md` is that part of the contract. Live at https://monet.kaleve.dev on a small server (2 vCPU, 4 GB RAM, shared with other services, which always win). The UI design is the canvas in `design/project/*.dc.html`;
+one tree of folders, the Ablage: `app/docs/files.md` is that part of the contract. How photos, files and recordings
+become one library (one timeline, one search, stacks, transcripts, moments) is `app/docs/together.md`. Live at https://monet.kaleve.dev on a small server (2 vCPU, 4 GB RAM, shared with other services, which always win). The UI design is the canvas in `design/project/*.dc.html`;
 `design/project/Main.dc.html` holds the tokens. UI language is German, du-form.
 
 ## Repository

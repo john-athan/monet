@@ -70,7 +70,9 @@ afterwards in its own queue, one file at a time and never at the same time as a 
 3. `pages` from `vipsheader -f n-pages`, `width`/`height` of page 1 from `vipsheader` (sheets: w 4, h 3).
 4. Cover with `vipsthumbnail '<pdf>[page=0]' -s 480x` (sheets: the SVG grid).
 5. Text for search: `pdftotext -l 200 -enc UTF-8 <pdf> -` (sheets: the cells joined by spaces; text files: their
-   text), at most 512 KiB, into `doc.text` and `doc_fts(title, text)`.
+   text), at most 512 KiB, into `doc.text` and `doc_fts(title, text, labels, extra)` (labels and transcript:
+   `docs/together.md`).
+   After a render the file gets its date, links, stack and a new turn in the darkroom (`docs/together.md`).
 6. `state = 'ok'`. Any step failing: `state = 'failed'`, `error` a German sentence ("Diese Datei konnte nicht
    aufbereitet werden."), the original stays downloadable. The kind of a PDF is fixed after step 3.
 
