@@ -1,6 +1,6 @@
 # monet
 
-Self-hosted photos for one owner, live at https://monet.kaleve.dev on kaleve-mx. Start with `docs/spec.md`: it is
+Self-hosted photos for one owner, live at https://monet.kaleve.dev on kaleve-home. Start with `docs/spec.md`: it is
 the contract every part builds against, and its rules (no new packages, who commits, no long dashes, German strings
 from the design canvas) apply here as written. This file only adds how to work in the checkout.
 
