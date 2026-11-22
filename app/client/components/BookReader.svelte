@@ -84,7 +84,8 @@
         </nav>
       {/if}
       <div class="page">
-        <iframe bind:this={frame} {title} {src} sandbox="allow-same-origin" onload={loaded}></iframe>
+        <!-- a new frame per chapter: changing a frame's src adds an entry to the browser history, so "back" would turn pages -->
+        {#key src}<iframe bind:this={frame} {title} {src} sandbox="allow-same-origin" onload={loaded}></iframe>{/key}
       </div>
     </div>
   {/if}

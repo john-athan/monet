@@ -100,10 +100,14 @@ export function go(path: string, replace = false, how?: Move, raw = false) {
   const bare = path.split("?")[0], q = path.includes("?") ? "?" + path.split("?")[1] : "";
   if (bare === app.path && q === app.query) return;
   history.replaceState({ ...(history.state ?? {}), scroll: scrollY }, "");
-  replace ? history.replaceState(null, "", path) : history.pushState(null, "", path);
+  // inApp: this entry was reached from a page of the app, so a back button may step back to it (see backOr)
+  replace ? history.replaceState({ inApp: !!history.state?.inApp }, "", path) : history.pushState({ inApp: true }, "", path);
   // a redirect (replace without a named motion) just happens
   navigate(bare, how ?? (replace ? "none" : undefined), () => { app.path = bare; app.query = q; scrollTo(0, 0); }, 0);
 }
+/** The back button of a full-screen page: the page before it when that was a page of the app, else `fallback`.
+ *  history.length says nothing about where the entries came from (another site, a frame's own navigation). */
+export const backOr = (fallback: string) => history.state?.inApp ? history.back() : go(fallback);
 /** The query string of the current page without navigating (the search page keeps its text in the URL). */
 export function setQuery(q: string) {
   const s = q ? "?" + q : "";

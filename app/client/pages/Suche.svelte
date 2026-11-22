@@ -2,7 +2,7 @@
   // Suche: the text becomes chips (each removable), the picture words are embedded in the browser, results come back.
   import { onMount } from "svelte";
   import type { Chip, ItemSummary, SearchOut } from "../../shared/types";
-  import { app, go, setQuery, view, viewing, member, house, genitive } from "../lib/state.svelte";
+  import { app, backOr, go, setQuery, view, viewing, member, house, genitive } from "../lib/state.svelte";
   import { people, loadPeople } from "../lib/stores.svelte";
   import { gone } from "../lib/actions.svelte";
   import { embed, parseText, searchChips } from "../lib/search.svelte";
@@ -148,7 +148,7 @@
 {:else}
   <header>
     <div class="bar">
-      <button type="button" class="back" aria-label="Zurück zu Fotos" onclick={() => (history.length > 1 ? history.back() : go("/"))}><Icon name="back" size={22} sw={2} /></button>
+      <button type="button" class="back" aria-label="Zurück zu Fotos" onclick={() => backOr("/")}><Icon name="back" size={22} sw={2} /></button>
       <label class="field">
         <Icon name="suche" size={19} sw={1.9} />
         <!-- svelte-ignore a11y_autofocus -->

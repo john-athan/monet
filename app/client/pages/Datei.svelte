@@ -4,7 +4,7 @@
   import type { DocDetail, DocKind } from "../../shared/types";
   import { KINDS, fileSign } from "../lib/files.svelte";
   import { api, post } from "../lib/api";
-  import { go, toast, house } from "../lib/state.svelte";
+  import { backOr, go, toast, house } from "../lib/state.svelte";
   import { bytes, duration, fullDate, num } from "../lib/format";
   import Icon from "../components/Icon.svelte";
   import Link from "../components/Link.svelte";
@@ -47,7 +47,7 @@
   });
 
   // back: where you came from, else the list of its kind
-  const back = () => (history.length > 1 ? history.back() : go(LIST));
+  const back = () => backOr(LIST);
 
   async function remove() {
     if (!d || !mine) return;

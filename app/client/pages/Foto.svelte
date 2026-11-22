@@ -3,7 +3,7 @@
   import Known from "../components/Known.svelte";
   import type { ItemDetail } from "../../shared/types";
   import { api, post } from "../lib/api";
-  import { app, go, toast, view, house, within } from "../lib/state.svelte";
+  import { app, backOr, go, toast, view, house, within } from "../lib/state.svelte";
   import { people, loadPeople, loadLists } from "../lib/stores.svelte";
   import { deleteItems, download, gone, setFavorite, share } from "../lib/actions.svelte";
   import { fullDate, clock, bytes, word, duration } from "../lib/format";
@@ -125,7 +125,7 @@
     if (d) { e.preventDefault(); e.stopPropagation(); panel = Math.min(maxPanel, Math.max(320, panelW + d)); store("monet-panel", String(Math.round(panel))); }
   }
 
-  const back = () => (history.length > 1 ? history.back() : go("/"));
+  const back = () => backOr("/");
   async function toggleFav(e: MouseEvent) { fav = !fav; if (fav) bloom(e.currentTarget as Element); try { await setFavorite(id, fav); } catch (e: any) { fav = !fav; toast(e.message); } }
   function remove() {
     const to = next ?? prev;
