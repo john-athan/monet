@@ -8,8 +8,10 @@
 // - A photo or video the library holds as a smaller copy (the Takeout's recompressed one, same name, same picture) is
 //   replaced: the server's supersede moves albums, favourite, place and a better date to the original and puts the
 //   copy into the trash, from where it is purged after 30 days.
+// --skip <file>: paths below the Drive root, one per line, that stay where they are (originals whose smaller copy the
+// library keeps on purpose: sending them would put the same photo in twice).
 // Safe to run again: files the server has are not sent, a copy that was replaced is in the trash and is not matched again.
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { relative, sep } from "node:path";
 import { FORMATS, extOf } from "../server/docsniff";
 import { known, MEDIA, missing, pool, post, sendFile, sha256File, walk } from "./upload-lib";
@@ -18,9 +20,10 @@ const args = process.argv.slice(2);
 const opt = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
 const root = args[0] && !args[0].startsWith("--") ? args[0].replace(/\/$/, "") : undefined;
 const origin = (opt("origin") ?? process.env.MONET_ORIGIN ?? "").replace(/\/$/, ""), session = opt("session") ?? process.env.MONET_SESSION;
+const skipList = opt("skip"), skip = new Set(skipList ? readFileSync(skipList, "utf8").split("\n").map(l => l.trim()).filter(Boolean) : []);
 const dry = args.includes("--dry-run"), log = opt("log"), parallel = Math.max(1, Number(opt("parallel") ?? 3));
 if (!root || !origin || !session) {
-  console.error('usage: bun tools/import-drive.ts "<My Drive>" --origin <url> --session <browser session> [--dry-run] [--log out.tsv] [--parallel 3]');
+  console.error('usage: bun tools/import-drive.ts "<My Drive>" --origin <url> --session <browser session> [--skip list.txt] [--dry-run] [--log out.tsv] [--parallel 3]');
   process.exit(2);
 }
 const server = { origin, session };
@@ -30,7 +33,7 @@ const PICTURES = "Pictures";
 type Plan = { path: string; rel: string; media: boolean; album: string | null; folder: string | null };
 function planOf(path: string): Plan | null {
   const rel = relative(root!, path), parts = rel.split(sep);
-  if (parts.some(HIDDEN)) return null;
+  if (parts.some(HIDDEN) || skip.has(rel)) return null;
   const media = MEDIA.test(path), ext = extOf(path);
   if (!media && !(ext && ext in FORMATS)) return null;
   const dir = parts.slice(0, -1);

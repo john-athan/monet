@@ -81,6 +81,15 @@ suite("import-drive", () => {
     const docs = db.query("SELECT d.orig_name, f.name AS folder, p.name AS parent FROM doc d JOIN folder f ON f.id = d.folder_id JOIN folder p ON p.id = f.parent_id").all();
     expect(docs).toEqual([{ orig_name: "notes.txt", folder: "MA", parent: "Uni" }]);
   });
+  test("a file on the skip list is not sent", async () => {
+    const pics = join(dir, "My Drive/Pictures/2019 Vietnam");
+    await image(join(pics, "kept.jpg"), 80, 60, 90, 11);
+    writeFileSync(join(dir, "skip.txt"), "Pictures/2019 Vietnam/kept.jpg\n");
+    const { out, code } = await run("--skip", join(dir, "skip.txt"), "--dry-run");
+    expect(code).toBe(0);
+    expect(out).toContain("the server lacks 0 of them");
+    Bun.spawnSync(["rm", join(pics, "kept.jpg")]);
+  });
   test("a second run sends nothing and replaces nothing", async () => {
     const { out, code } = await run();
     expect(code).toBe(0);
