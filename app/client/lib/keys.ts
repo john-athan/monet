@@ -1,9 +1,10 @@
 // The keyboard in one place. Pages mark what can be focused with `data-item`.
 //   Arrows   move between photos in a grid (left/right: neighbours, up/down: the tile above or below)
 //   Enter    opens the focused photo (it is a link); Space toggles it while photos are picked
-//   Escape   leaves a text field, ends a selection, goes back from a photo or a sub page
+//   Escape   leaves a text field, ends a selection, folds a stack, goes back from a photo or a sub page
 import { app, go, local, sel, selectEnd } from "./state.svelte";
 import { neighbour } from "./neighbour";
+import { closeStack } from "./stacks.svelte";
 
 const typing = (t: Element | null) => !!t?.closest("input, textarea, select, [contenteditable]");
 const modal = () => !!document.querySelector("[aria-modal='true']");
@@ -19,6 +20,8 @@ export function installKeys() {
       if (modal()) return;
       if (typing(t)) { (t as HTMLElement).blur(); return; }
       if (sel.on) { selectEnd(); e.preventDefault(); return; }
+      // a fanned-out stack folds again (lib/stacks.svelte.ts)
+      if (/[?&]stapel=/.test(app.query)) { e.preventDefault(); closeStack(); return; }
       if (/^\/(foto|serie|geraete|personen\/|orte\/|alben\/)/.test(local())) { e.preventDefault(); history.length > 1 ? history.back() : go("/"); }
       return;
     }

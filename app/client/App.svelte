@@ -27,6 +27,8 @@
   import Datei from "./pages/Datei.svelte";
   import Buecher from "./pages/Buecher.svelte";
   import AudioList from "./pages/Audio.svelte";
+  import Momente from "./pages/Momente.svelte";
+  import Moment from "./pages/Moment.svelte";
 
   const route = $derived.by(() => {
     const p = local();
@@ -43,6 +45,8 @@
     if (p === "/alben") return { name: "alben" };
     if ((m = /^\/alben\/(\d+)$/.exec(p))) return { name: "album", id: Number(m[1]) };
     if ((m = /^\/serie\/([^/]+)$/.exec(p))) return { name: "serie", key: decodeURIComponent(m[1]) };
+    if (p === "/momente") return { name: "momente" };
+    if ((m = /^\/moment\/(\d{4}-\d{2}-\d{2})$/.exec(p))) return { name: "moment", key: m[1] };
     if (p === "/geraete") return { name: "geraete" };
     if (p === "/haushalt") return { name: "haushalt" };
     if (p === "/ablage") return { name: "ablage", id: null };
@@ -55,7 +59,7 @@
     if ((m = /^\/datei\/(\d+)$/.exec(p))) return { name: "datei", id: Number(m[1]) };
     return { name: "fotos" };
   });
-  const TITLES: Record<string, string> = { setup: "Einrichten", login: "Anmelden", fotos: "Fotos", suche: "Suche", foto: "Foto", personen: "Personen", person: "Person", dinge: "Dinge", orte: "Orte", ort: "Ort", alben: "Alben", album: "Album", serie: "Serie", geraete: "Geräte und Sicherung", haushalt: "Haushalt", ablage: "Ablage", dokumente: "Dokumente", tabellen: "Tabellen", praesentationen: "Präsentationen", buecher: "Bücher", audio: "Audio", datei: "Datei" };
+  const TITLES: Record<string, string> = { setup: "Einrichten", login: "Anmelden", fotos: "Fotos", suche: "Suche", foto: "Foto", personen: "Personen", person: "Person", dinge: "Dinge", orte: "Orte", ort: "Ort", alben: "Alben", album: "Album", serie: "Serie", momente: "Momente", moment: "Moment", geraete: "Geräte und Sicherung", haushalt: "Haushalt", ablage: "Ablage", dokumente: "Dokumente", tabellen: "Tabellen", praesentationen: "Präsentationen", buecher: "Bücher", audio: "Audio", datei: "Datei" };
   $effect(() => { document.title = `${TITLES[route.name]} · ${themeOf(theme()).brand}`; });
   // a change of light washes over the page from where the sun stands, like the next canvas of a series
   let lit = "";
@@ -132,6 +136,8 @@
     {:else if route.name === "alben"}<Alben />
     {:else if route.name === "album"}<Album id={route.id!} />
     {:else if route.name === "serie"}<Serie key={route.key!} />
+    {:else if route.name === "momente"}<Momente />
+    {:else if route.name === "moment"}<Moment key={route.key!} />
     {:else if route.name === "geraete"}<Geraete />
     {:else if route.name === "haushalt"}<Haushalt />
     {:else if route.name === "ablage"}<Ablage id={route.id ?? null} />

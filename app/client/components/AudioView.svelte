@@ -4,7 +4,8 @@
   import { toast } from "../lib/state.svelte";
   import { albumOf } from "../lib/files.svelte";
   import { duration } from "../lib/format";
-  import { player, isCurrent, play, toggle } from "../lib/player.svelte";
+  import { player, isCurrent, play, toggle, seek } from "../lib/player.svelte";
+  import TranscriptView from "./TranscriptView.svelte";
   import CoverArt from "./CoverArt.svelte";
   import Icon from "./Icon.svelte";
   let { detail }: { detail: DocDetail } = $props();
@@ -12,6 +13,13 @@
   const here = $derived(isCurrent(detail.id));
   const going = $derived(here && player.playing);
   let busy = $state(false);
+  /** plays this track from `sec`: starts it first when another one (or none) is playing, then waits for its length */
+  async function from(sec: number) {
+    if (!here) play([me]);
+    for (let k = 0; k < 30 && !(isCurrent(detail.id) && player.dur > 0); k++) await new Promise(r => setTimeout(r, 100));
+    seek(sec);
+    if (!player.playing) toggle();
+  }
   async function album() {
     if (busy) return; busy = true;
     try {
@@ -32,6 +40,7 @@
     <button type="button" class="main" onclick={() => (here ? toggle() : play([me]))}><Icon name={going ? "pause" : "play"} size={20} />{going ? "Pause" : "Abspielen"}</button>
     {#if detail.album}<button type="button" class="sec" disabled={busy} onclick={album}>Album abspielen</button>{/if}
   </div>
+  {#if detail.transcript}<TranscriptView transcript={detail.transcript} onseek={from} />{/if}
 </div>
 <style>
   .v { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 28px 20px 40px; }

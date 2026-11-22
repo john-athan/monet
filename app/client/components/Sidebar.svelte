@@ -41,6 +41,10 @@
       <Link href={within("/", m.id)} raw class="who" aria-current={on === m.id ? "true" : undefined}><Mark size={22} theme={m.theme} />{genitive(m.name)} Fotos</Link>
     {/each}
   {/if}
+  {#if lists.moments.length}
+    <h2><Link href="/momente" class="hh">Momente</Link></h2>
+    {#each lists.moments.slice(0, 5) as m (m.key)}<Link href="/moment/{m.key}" class="sub">{m.title} <span class="yr tnum">{m.start.slice(0, 4)}</span></Link>{/each}
+  {/if}
   {#if lists.series.length}
     <h2>Serien</h2>
     {#each lists.series.slice(0, 6) as s}<Link href="/serie/{s.key}" class="sub">{s.title}</Link>{/each}
@@ -72,4 +76,5 @@
   nav :global(.box) { margin-top: 24px; display: flex; gap: 10px; padding: 12px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule); font-size: 13.5px; line-height: 1.35; }
   nav :global(.box svg) { flex: none; margin-top: 1px; color: var(--water); }
   .box b { font-weight: 650; } .m { color: var(--muted); }
+  .yr { color: var(--muted); font-size: 12.5px; }
 </style>

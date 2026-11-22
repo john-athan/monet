@@ -43,6 +43,7 @@
       toast(`Mit ${to.name} zusammengeführt.`); go(`/personen/${to.id}`, true);
     } catch (err: any) { toast(err.message); } finally { busy = false; }
   }
+  import Mentioned from "../components/Mentioned.svelte";
 </script>
 <PageHead title={label} room="--esszimmer" sub={items ? count(items.length, "Foto", "Fotos") : ""}>
   <div class="acts">
@@ -70,6 +71,7 @@
       {#if into}<button type="button" class="ink" disabled={busy} onclick={() => merge()}>Mit {into.name} zusammenführen</button>{/if}
     </section>
   {/if}
+  <Mentioned kind="person" {id} />
   {#if !items}<Loading />{:else if !items.length}<p class="m">Hier ist noch kein Foto.</p>{:else}<Grid {items} />{/if}
 </div>
 <style>

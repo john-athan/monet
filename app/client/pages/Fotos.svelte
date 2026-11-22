@@ -14,8 +14,11 @@
   import Pic from "../components/Pic.svelte";
   import Loading from "../components/Loading.svelte";
   import { arrive, visibleIds } from "../lib/motion";
+  import { stacks, openStack, closeStack, followStacks, withStack } from "../lib/stacks.svelte";
 
-  const days = $derived(tl.days.map(d => ({ ...d, items: d.items.filter(i => !gone.has(i.id)) })).filter(d => d.items.length));
+  // files stand on their days too (docs/together.md); a fanned-out stack shows all its files in place of the pile
+  const days = $derived(tl.days.map(d => ({ ...d, items: d.items.filter(i => !gone.has(i.id)), docs: withStack(d.docs ?? []) })).filter(d => d.items.length || d.docs.length));
+  $effect(() => { void app.query; followStacks(); });
   $effect(() => { view.ids = ids(days); });
   let t: Timeline | undefined = $state();
 
@@ -72,7 +75,7 @@
   {#if tl.loaded && !days.length}
     <p class="empty">Noch keine Fotos hier. Ziehe Fotos in das Fenster oder wähle oben „Importieren“.</p>
   {/if}
-  <Timeline bind:this={t} {days} wide {onpos} onend={() => loadMore()} />
+  <Timeline bind:this={t} {days} wide {onpos} onend={() => loadMore()} open={stacks.open} onstack={openStack} onfold={closeStack} />
 {:else}
   <header>
     <div class="row">
@@ -105,9 +108,17 @@
       </span>
     </Link>
   {/if}
+  {#if lists.moments.length}
+    <div class="moms" role="list" aria-label="Momente">
+      {#each lists.moments.slice(0, 8) as m (m.key)}
+        <span role="listitem"><Link href="/moment/{m.key}" class="mom"><span class="mp"><Pic id={m.cover[0]} w={1} h={1} square sizes="56px" /></span><span class="mt"><b>{m.title}</b><span class="tnum">{m.subtitle}</span></span></Link></span>
+      {/each}
+      <span role="listitem"><Link href="/momente" class="mom all">Alle Momente</Link></span>
+    </div>
+  {/if}
   <div class="tlwrap">
     {#if tl.loaded && !days.length}<p class="empty">Noch keine Fotos hier. Importiere welche auf der Seite Geräte.</p>{/if}
-    <Timeline bind:this={t} {days} wide={false} {onpos} onend={() => loadMore()} />
+    <Timeline bind:this={t} {days} wide={false} {onpos} onend={() => loadMore()} open={stacks.open} onstack={openStack} onfold={closeStack} />
   </div>
   {#if !tl.loaded}<Loading text="Die Fotos kommen" />{/if}
   {#if tl.error}<p class="empty" role="alert">{tl.error}</p>{/if}
@@ -137,6 +148,12 @@
   :global(.serie:hover) .pic { transform: translateY(-1px); }
   .y { font-size: 11px; color: var(--muted); }
   .tlwrap { padding-right: 22px; }
+  .moms { display: flex; gap: 8px; overflow-x: auto; padding: 8px 14px 2px; }
+  .moms :global(.mom) { flex: none; display: flex; align-items: center; gap: 9px; height: 64px; padding: 4px 14px 4px 4px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--rule); max-width: 240px; }
+  .moms :global(.mom.all) { padding: 0 16px; font-size: 14px; font-weight: 650; color: var(--muted); }
+  .mp { flex: none; width: 56px; height: 56px; border-radius: 12px; overflow: hidden; }
+  .mt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; } .mt b { font-weight: 650; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mt span { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .empty { padding: 28px 18px; color: var(--muted); }
   :global(.searchpill) { position: fixed; z-index: 15; left: 14px; right: 14px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 76px + var(--player-h, 0px)); height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-radius: 25px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow); color: var(--muted); font-size: 15px; }
   .top { position: fixed; z-index: 16; right: 28px; bottom: calc(28px + var(--player-h, 0px)); width: 48px; height: 48px; display: grid; place-items: center; border: 0; border-radius: 24px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow); color: var(--ink); cursor: pointer; }

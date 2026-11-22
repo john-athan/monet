@@ -5,11 +5,18 @@
   import { layoutDays, dayAt, visibleRange, PHONE } from "../lib/layout";
   import { light } from "../lib/state.svelte";
   import Tile from "./Tile.svelte";
-  let { days, wide, onpos, onend }: { days: TimelineDay[]; wide: boolean; onpos?: (date: string) => void; onend?: () => void } = $props();
+  import DocTile from "./DocTile.svelte";
+  import type { DocSummary } from "../../shared/types";
+  // files stand after the photos of their day (docs/together.md); `open` is the stack fanned out, its files carry `stackOf`
+  let { days, wide, onpos, onend, open = null, onstack, onfold }: { days: (TimelineDay & { docs: (DocSummary & { stackOf?: number })[] })[]; wide: boolean; onpos?: (date: string) => void; onend?: () => void;
+    open?: number | null; onstack?: (id: number) => void; onfold?: () => void } = $props();
+  /** the box of a file in the layout: a page stands upright, slides lie, books and records are their own shape */
+  const box = (d: DocSummary) => d.kind === "book" ? { w: 2, h: 3 } : d.kind === "audio" || d.kind === "other" ? { w: 1, h: 1 } : d.kind === "sheet" ? { w: 4, h: 3 } : d.w > 0 && d.h > 0 ? { w: d.w, h: d.h } : { w: 3, h: 4 };
+  const boxes = $derived(days.map(d => ({ items: [...d.items, ...(d.docs ?? []).map(box)] })));
 
   let host: HTMLElement | undefined = $state();
   let width = $state(0), y0 = $state(0), vh = $state(innerHeight), hostTop = $state(0);
-  const lay = $derived(layoutDays(days, width, wide));
+  const lay = $derived(layoutDays(boxes, width, wide));
   const range = $derived(visibleRange(lay, y0 - hostTop, y0 - hostTop + vh, vh * 1.2));
   const shown = $derived(days.slice(range[0], range[1]).map((d, k) => ({ d, i: range[0] + k })));
 
@@ -49,12 +56,18 @@
       {#if wide}
         {#each L.rows ?? [] as r}
           <div class="row" style="height:{r.h}px">
-            {#each r.tiles as t (d.items[t.i].id)}<div style="width:{t.w}px;height:{r.h}px"><Tile item={d.items[t.i]} sizes="{Math.round(t.w)}px" first={i === 0} /></div>{/each}
+            {#each r.tiles as t (t.i < d.items.length ? d.items[t.i].id : -d.docs[t.i - d.items.length].id)}
+              <div style="width:{t.w}px;height:{r.h}px">
+                {#if t.i < d.items.length}<Tile item={d.items[t.i]} sizes="{Math.round(t.w)}px" first={i === 0} />
+                {:else}{@const f = d.docs[t.i - d.items.length]}<DocTile doc={f} stackOf={f.stackOf ?? null} onopen={() => onstack?.(f.id)} onclose={open === f.id ? onfold : undefined} />{/if}
+              </div>
+            {/each}
           </div>
         {/each}
       {:else}
         <div class="grid" style="grid-auto-rows:{L.cell}px">
           {#each d.items as it, k (it.id)}<div><Tile item={it} square sizes="34vw" first={i === 0 && k < 6} /></div>{/each}
+          {#each d.docs ?? [] as f (-f.id)}<div><DocTile doc={f} square stackOf={f.stackOf ?? null} onopen={() => onstack?.(f.id)} onclose={open === f.id ? onfold : undefined} /></div>{/each}
         </div>
       {/if}
     </section>

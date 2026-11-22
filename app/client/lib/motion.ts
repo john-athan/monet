@@ -317,3 +317,60 @@ export function veil(_: Element, { duration = 260 } = {}) {
   if (still()) return { duration: 0 };
   return { duration: ms(duration), css: (t: number) => `opacity: ${t}` };
 }
+
+// ---- Stapel: a stack of files fans out like sheets dealt from a pile, and folds back onto its top sheet
+type Rects = Map<string, DOMRect>;
+const sheetKey = (el: HTMLElement) => (el.dataset.doc ? "d" + el.dataset.doc : "i" + el.dataset.id);
+function sheets(): Rects {
+  const m: Rects = new Map();
+  for (const el of document.querySelectorAll<HTMLElement>("[data-item][data-id], [data-doc]")) { const r = el.getBoundingClientRect(); if (inView(r, 300)) m.set(sheetKey(el), r); }
+  return m;
+}
+function settleAll(before: Rects, boxes: Map<string, Box>, from: DOMRect | undefined, fresh: (el: HTMLElement) => boolean) {
+  const shift = new Map<string, Box>();
+  for (const el of document.querySelectorAll<HTMLElement>("[data-flip]")) {
+    const was = boxes.get(el.dataset.flip!); if (!was) continue;
+    const r = el.getBoundingClientRect(), d = { x: was.x - r.left, y: was.y - r.top };
+    shift.set(el.dataset.flip!, d);
+    if (Math.abs(d.y) > .5) el.animate([{ transform: `translate(0, ${d.y}px)` }, { transform: "none" }], { duration: ms(560), easing: "cubic-bezier(.25,.8,.25,1)" });
+  }
+  let k = 0;
+  for (const el of document.querySelectorAll<HTMLElement>("[data-item][data-id], [data-doc]")) {
+    const r = el.getBoundingClientRect();
+    if (!inView(r, 100)) continue;
+    const box = (el.closest("[data-flip]") as HTMLElement | null)?.dataset.flip, b = (box && shift.get(box)) || { x: 0, y: 0 };
+    const was = fresh(el) ? from : before.get(sheetKey(el));
+    if (!was) continue;
+    const dx = was.left - r.left - b.x, dy = was.top - r.top - b.y, sx = was.width / r.width, sy = was.height / r.height;
+    if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(sx - 1) < .01) continue;
+    el.style.transformOrigin = "0 0";
+    const turn = fresh(el) ? (k % 2 ? 5 : -4) + (k % 3) : 0, delay = fresh(el) ? Math.min(k++ * 45, 400) : 0;
+    el.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(${turn}deg)`, zIndex: 3 }, { transform: "none", zIndex: 3 }],
+      { duration: ms(fresh(el) ? 640 : 560), delay: ms(delay), easing: "cubic-bezier(.3,1.25,.5,1)", fill: "backwards" })
+      .finished.finally(() => { el.style.transformOrigin = ""; }).catch(() => {});
+  }
+}
+const flipBoxes = () => { const m = new Map<string, Box>(); for (const el of document.querySelectorAll<HTMLElement>("[data-flip]")) { const r = el.getBoundingClientRect(); m.set(el.dataset.flip!, { x: r.left, y: r.top }); } return m; };
+/** Fans the stack `top` out: `change` puts its files on the page; they fly from the pile to their places, the rest moves aside. */
+export function fanOut(top: number, change: () => void) {
+  if (still()) { change(); return; }
+  const before = sheets(), boxes = flipBoxes(), pile = before.get("d" + top);
+  change(); flushSync();
+  settleAll(before, boxes, pile, el => el.dataset.stack === String(top) && el.dataset.doc !== String(top));
+}
+/** Folds the stack `top`: its sheets fly onto the top one, then `change` puts the pile back and the rest closes up. */
+export async function fold(top: number, change: () => void) {
+  if (still()) { change(); return; }
+  const before = sheets(), boxes = flipBoxes(), at = before.get("d" + top);
+  const members = [...document.querySelectorAll<HTMLElement>(`[data-stack="${top}"]`)].filter(el => el.dataset.doc !== String(top));
+  if (at) await Promise.all(members.map((el, k) => {
+    const r = el.getBoundingClientRect();
+    if (!inView(r, 100)) return Promise.resolve();
+    el.style.transformOrigin = "0 0";
+    const turn = (k % 2 ? 4 : -5) + (k % 3);
+    return el.animate([{ transform: "none", zIndex: 3 }, { transform: `translate(${at.left - r.left}px, ${at.top - r.top}px) scale(${at.width / r.width}, ${at.height / r.height}) rotate(${turn}deg)`, opacity: .9, zIndex: 3 }],
+      { duration: ms(380), delay: ms(Math.min(k * 25, 200)), easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" }).finished.catch(() => {});
+  }));
+  change(); flushSync();
+  settleAll(before, boxes, undefined, () => false);
+}

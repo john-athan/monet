@@ -114,6 +114,13 @@ export function setQuery(q: string) {
   if (s === location.search) return;
   history.replaceState(history.state, "", location.pathname + s); app.query = s;
 }
+/** A step within the page that the back button undoes (a stack fanned out): a new history entry with only the query
+ *  changed, the scroll kept. */
+export function pushQuery(q: string) {
+  history.replaceState({ ...(history.state ?? {}), scroll: scrollY }, "");
+  history.pushState({ inApp: true, scroll: scrollY, step: true }, "", location.pathname + (q ? "?" + q : ""));
+  app.query = q ? "?" + q : "";
+}
 addEventListener("popstate", e => {
   const y = (e.state as { scroll?: number } | null)?.scroll ?? 0, path = location.pathname, q = location.search;
   // the page may still be filling in: set the scroll now and once more a frame later (navigate does the second)

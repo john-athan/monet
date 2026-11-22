@@ -17,6 +17,8 @@ const BACKOFF_MIN = 2_000, BACKOFF_MAX = 300_000;
 const MAX_ITEM_FAILURES = 3;
 
 type Pending = { id: number; kind: string; needs: string[] };
+/** a file's plan (docs/together.md): pictures to embed with the image tower, text pieces with the text tower, in order */
+type DocPending = { id: number; kind: string; images: string[]; texts: string[] };
 
 export class Darkroom {
   private s: DarkroomStatus = { state: "stopped", done: 0, pending: 0, current: null };
@@ -26,6 +28,7 @@ export class Darkroom {
   private failures = new Map<number, number>();
   private skipped = new Set<number>();
   private batch: { id: number; done: boolean }[] = [];
+  private files = false;
   private batchTotal = 0;
   alwaysOn = false;
 
@@ -40,7 +43,7 @@ export class Darkroom {
   private global(): DarkroomGlobal {
     const st = this.s, n = this.batch.filter(b => !b.done).length;
     const busy = st.state === "running" || st.state === "loading";
-    const label = st.state === "running" ? `Analysiert ${num(Math.max(n, 1))} ${n === 1 ? "Foto" : "Fotos"}`
+    const label = st.state === "running" ? `Analysiert ${num(Math.max(n, 1))} ${this.files ? (n === 1 ? "Datei" : "Dateien") : n === 1 ? "Foto" : "Fotos"}`
       : st.state === "loading" ? "Bereitet die Suche vor" : st.state === "paused" ? "Pausiert"
       : st.state === "error" ? "Fehler, neuer Versuch folgt" : st.state === "stopped" ? "Angehalten" : "Alles analysiert";
     return { busy, label, progress: this.batchTotal ? (this.batchTotal - n) / this.batchTotal : busy ? 0 : 1, pending: st.pending, items: this.batch.slice(0, 3).map(b => ({ ...b })) };
@@ -84,6 +87,9 @@ export class Darkroom {
         if (this.hidden) { this.set({ state: "paused", current: null }); await this.sleep(60_000); continue; }
         await this.ensureVocab();
         const list: Pending[] = (await this.json(`/api/index/pending?limit=${BATCH}&needs=clip,faces`)).filter((p: Pending) => !this.skipped.has(p.id) && p.needs.some(n => n === "clip" || n === "faces"));
+        // photos first; when none wait, the files (their ids live in another table, so they are kept apart)
+        if (!list.length && await this.filesOnce()) { backoff = 0; continue; }
+        this.files = false;
         this.batch = list.map(p => ({ id: p.id, done: false })); this.batchTotal = list.length;
         this.set({ pending: list.length, state: list.length ? "running" : "waiting", error: undefined, retryInMs: undefined });
         if (!list.length) { this.set({ current: null }); await this.sleep(POLL_MS); continue; }
@@ -120,6 +126,39 @@ export class Darkroom {
     if (wantClip && a.clip) body.clip = encodeVec(a.clip);
     if (wantFaces) body.faces = a.faces.map(f => ({ x: f.x, y: f.y, w: f.w, h: f.h, landmarks: f.landmarks, score: f.score, quality: f.quality, vec: encodeVec(f.vec) }));
     await this.json(`/api/index/${p.id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  }
+
+  private skippedDocs = new Set<number>();
+  /** One batch of files. false: none was waiting. */
+  private async filesOnce(): Promise<boolean> {
+    const list: DocPending[] = (await this.json(`/api/index/docs/pending?limit=${BATCH}`)).filter((d: DocPending) => !this.skippedDocs.has(d.id));
+    if (!list.length) return false;
+    this.files = true;
+    this.batch = list.map(d => ({ id: d.id, done: false })); this.batchTotal = list.length;
+    this.set({ pending: list.length, state: "running", error: undefined, retryInMs: undefined });
+    for (let i = 0; i < list.length && this.running && !this.hidden; i++) {
+      this.set({ current: null, pending: list.length - i });
+      try { await this.oneDoc(list[i]); this.set({ done: this.s.done + 1 }); }
+      catch (e: any) {
+        if (e.status === 401 || e.status === 403) throw e;
+        // 409: the file changed while it was embedded (a transcript came in); the next batch brings the new plan
+        if (e.status !== 409) this.skippedDocs.add(list[i].id);
+      }
+      this.batch[i].done = true;
+    }
+    this.batch = []; this.batchTotal = 0; this.files = false;
+    return true;
+  }
+  private async oneDoc(d: DocPending) {
+    const images: string[] = [], texts: string[] = [];
+    for (const url of d.images) {
+      const r = await fetch(this.api + url, { credentials: "same-origin" });
+      if (!r.ok) throw Object.assign(new Error(`${url}: HTTP ${r.status}`), { status: r.status });
+      const a = await ml.analyse(await createImageBitmap(await r.blob()), { clip: true, faces: false });
+      images.push(encodeVec(a.clip!));
+    }
+    for (const t of d.texts) texts.push(encodeVec(await ml.embedText(t)));
+    await this.json(`/api/index/doc/${d.id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: CLIP_MODEL, images, texts }) });
   }
 
   private vocabDone = false;

@@ -14,8 +14,10 @@
     api<PlaceOut[]>("/api/places").then(r => { if (my === id) place = r.find(p => p.id === my) ?? null; }).catch(() => {});
     byChip({ kind: "place", label: "Ort", value: String(my) }).then(r => { if (my === id) items = r; }).catch(e => (error = e.message));
   });
+  import Mentioned from "../components/Mentioned.svelte";
 </script>
 <PageHead title={place?.name ?? "Ort"} room="--garten" sub={items ? count(items.length, "Foto", "Fotos") : ""} />
+<Mentioned kind="place" {id} />
 <div class="p">
   <Link href="/orte" class="back">Alle Orte</Link>
   {#if error}<p class="m" role="alert">{error}</p>{:else if !items}<Loading />{:else if !items.length}<p class="m">Hier ist noch kein Foto.</p>{:else}<Grid {items} />{/if}

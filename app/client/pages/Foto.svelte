@@ -1,6 +1,7 @@
 <script lang="ts">
   // One photo. Phone per Phone-Foto: the picture on top, the sheet with the details below. Desktop: picture left, details right.
   import Known from "../components/Known.svelte";
+  import TranscriptView from "../components/TranscriptView.svelte";
   import type { ItemDetail } from "../../shared/types";
   import { api, post } from "../lib/api";
   import { app, backOr, go, toast, view, house, within } from "../lib/state.svelte";
@@ -212,6 +213,7 @@
         {#if mine}<button type="button" class="single" onclick={single}>Als einzelnes Foto zeigen</button>{/if}
       </section>
     {/if}
+    {#if d.transcript}<TranscriptView transcript={d.transcript} compact onseek={sec => { const v = document.querySelector<HTMLVideoElement>("video[data-stage]"); if (v) { v.currentTime = sec; void v.play().catch(() => {}); } }} />{/if}
     {#if d.labels.length}
       <div class="tags" aria-label="Erkannt">{#each d.labels as l}<Link href="/suche?q={encodeURIComponent(l.label)}">{l.label}</Link>{/each}</div>
     {/if}

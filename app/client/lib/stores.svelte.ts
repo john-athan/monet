@@ -50,15 +50,15 @@ export const status = $state({ s: null as Status | null });
 export async function loadStatus() { try { status.s = await api<Status>("/api/status"); } catch {} }
 
 import type { AlbumOut, SeriesOut } from "../../shared/types";
-export const lists = $state({ series: [] as SeriesOut[], albums: [] as AlbumOut[], loaded: false });
+export const lists = $state({ series: [] as SeriesOut[], albums: [] as AlbumOut[], moments: [] as MomentSummary[], loaded: false });
 export async function loadLists() {
   const g = gen;
-  const [s, a] = await Promise.all([api<SeriesOut[]>("/api/series").catch(() => []), api<AlbumOut[]>("/api/albums").catch(() => [])]);
+  const [s, a, m] = await Promise.all([api<SeriesOut[]>("/api/series").catch(() => []), api<AlbumOut[]>("/api/albums").catch(() => []), api<MomentSummary[]>("/api/moments").catch(() => [])]);
   if (g !== gen) return;
-  lists.series = s; lists.albums = a; lists.loaded = true;
+  lists.series = s; lists.albums = a; lists.moments = m; lists.loaded = true;
 }
 
-import type { PeopleOut } from "../../shared/types";
+import type { MomentSummary, PeopleOut } from "../../shared/types";
 export const people = $state({ p: null as PeopleOut | null });
 export async function loadPeople(force = false) { if (people.p && !force) return; const g = gen; try { const p = await api<PeopleOut>("/api/people"); if (g === gen) people.p = p; } catch {} }
 

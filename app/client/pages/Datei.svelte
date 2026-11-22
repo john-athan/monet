@@ -108,7 +108,10 @@
         {#if d.durationMs}<dt>Dauer</dt><dd>{duration(d.durationMs)}</dd>{/if}
         <dt>Größe</dt><dd>{bytes(d.bytes)}</dd>
         {#if amount}<dt>{d.kind === "sheet" ? "Blätter" : d.kind === "slides" ? "Folien" : d.kind === "book" ? "Kapitel" : "Seiten"}</dt><dd>{amount}</dd>{/if}
+        {#if d.takenAt !== d.modifiedAt}<dt>Erstellt</dt><dd>{fullDate(d.takenAt)}</dd>{/if}
         <dt>Geändert</dt><dd>{fullDate(d.modifiedAt)}</dd>
+        {#if d.labels.length}<dt>Erkannt</dt><dd class="path">{#each d.labels as l, k}{k ? ", " : ""}<Link href="/suche?q={encodeURIComponent(l)}">{l}</Link>{/each}</dd>{/if}
+        {#if d.links.length}<dt>Erwähnt</dt><dd class="path">{#each d.links as l, k}{k ? ", " : ""}<Link href={l.kind === "person" ? `/personen/${l.id}` : `/orte/${l.id}`}>{l.name}</Link>{/each}</dd>{/if}
         <dt>Ordner</dt>
         <dd class="path">
           <Link href="/ablage">Ablage</Link>{#each d.path as p (p.id)}<span aria-hidden="true"> / </span><Link href="/ablage/{p.id}">{p.name}</Link>{/each}

@@ -10,6 +10,7 @@
   import FilePills from "../components/FilePills.svelte";
   import ImportSheet from "../components/ImportSheet.svelte";
   import Loading from "../components/Loading.svelte";
+  import { stacks, openStack, closeStack, followStacks, withStack } from "../lib/stacks.svelte";
   let { kind }: { kind: DocKind } = $props();
   const k = $derived(KINDS[kind]);
   // one list per page: App mounts each kind as its own page
@@ -24,9 +25,10 @@
     const t = setTimeout(() => list.search(v), 250);
     return () => clearTimeout(t);
   });
+  $effect(() => { void app.query; followStacks(); });
   const groups = $derived.by(() => {
-    const out: { label: string; docs: DocSummary[] }[] = [];
-    for (const d of s.docs) {
+    const out: { label: string; docs: (DocSummary & { stackOf?: number })[] }[] = [];
+    for (const d of withStack(s.docs)) {
       const label = monthLabel(d.modifiedAt), last = out.at(-1);
       if (last && last.label === label) last.docs.push(d); else out.push({ label, docs: [d] });
     }
@@ -51,7 +53,7 @@
 {#each groups as g (g.label)}
   <section aria-label={g.label}>
     <h2>{g.label}</h2>
-    <div class="grid">{#each g.docs as d (d.id)}<DocCard doc={d} />{/each}</div>
+    <div class="grid">{#each g.docs as d (d.id)}<DocCard doc={d} stackOf={d.stackOf ?? null} onopen={() => openStack(d.id)} onclose={stacks.open === d.id ? closeStack : undefined} />{/each}</div>
   </section>
 {/each}
 {#if s.loading && !s.loaded}<Loading text="Die Dateien kommen" />{/if}
