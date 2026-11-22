@@ -4,9 +4,11 @@
   import Link from "./Link.svelte";
   import Icon from "./Icon.svelte";
   const cur = $derived(sectionOf(local()));
+  // one more tab: the Ablage, current on all four file pages
+  const TABS = [...SECTIONS, { key: "ablage", path: "/ablage", label: "Ablage", room: "--water" }];
 </script>
-<nav aria-label="Bereiche" data-vt="tabs" style="grid-template-columns:repeat({SECTIONS.length}, minmax(0, 1fr))">
-  {#each SECTIONS as s}
+<nav aria-label="Bereiche" data-vt="tabs" style="grid-template-columns:repeat({TABS.length}, minmax(0, 1fr))">
+  {#each TABS as s}
     <Link href={s.path} class={s.key === cur ? "on" : "tab"} aria-current={s.key === cur ? "page" : undefined}>
       <Icon name={s.key} />{s.label}
       {#if s.key === cur}<span class="mk" aria-hidden="true"><span class="dab stroke" style="inset:0;background:var({s.room});transform:rotate(-4deg)"></span></span>{/if}

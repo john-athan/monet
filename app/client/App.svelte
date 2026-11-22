@@ -20,6 +20,9 @@
   import Serie from "./pages/Serie.svelte";
   import Geraete from "./pages/Geraete.svelte";
   import Haushalt from "./pages/Haushalt.svelte";
+  import Ablage from "./pages/Ablage.svelte";
+  import Dateien from "./pages/Dateien.svelte";
+  import Datei from "./pages/Datei.svelte";
 
   const route = $derived.by(() => {
     const p = local();
@@ -38,9 +41,15 @@
     if ((m = /^\/serie\/([^/]+)$/.exec(p))) return { name: "serie", key: decodeURIComponent(m[1]) };
     if (p === "/geraete") return { name: "geraete" };
     if (p === "/haushalt") return { name: "haushalt" };
+    if (p === "/ablage") return { name: "ablage", id: null };
+    if ((m = /^\/ablage\/(\d+)$/.exec(p))) return { name: "ablage", id: Number(m[1]) };
+    if (p === "/dokumente") return { name: "dokumente" };
+    if (p === "/tabellen") return { name: "tabellen" };
+    if (p === "/praesentationen") return { name: "praesentationen" };
+    if ((m = /^\/datei\/(\d+)$/.exec(p))) return { name: "datei", id: Number(m[1]) };
     return { name: "fotos" };
   });
-  const TITLES: Record<string, string> = { setup: "Einrichten", login: "Anmelden", fotos: "Fotos", suche: "Suche", foto: "Foto", personen: "Personen", person: "Person", dinge: "Dinge", orte: "Orte", ort: "Ort", alben: "Alben", album: "Album", serie: "Serie", geraete: "Geräte und Sicherung", haushalt: "Haushalt" };
+  const TITLES: Record<string, string> = { setup: "Einrichten", login: "Anmelden", fotos: "Fotos", suche: "Suche", foto: "Foto", personen: "Personen", person: "Person", dinge: "Dinge", orte: "Orte", ort: "Ort", alben: "Alben", album: "Album", serie: "Serie", geraete: "Geräte und Sicherung", haushalt: "Haushalt", ablage: "Ablage", dokumente: "Dokumente", tabellen: "Tabellen", praesentationen: "Präsentationen", datei: "Datei" };
   $effect(() => { document.title = `${TITLES[route.name]} · ${themeOf(theme()).brand}`; });
   // a change of light washes over the page from where the sun stands, like the next canvas of a series
   let lit = "";
@@ -91,7 +100,7 @@
   let dark = false;
   $effect(() => { if (app.loggedIn && app.wide && !dark) { dark = true; startDarkroom(); } });
   $effect(() => { if (app.indexer && !dark) { dark = true; startDarkroom({ alwaysOn: true }); } });
-  const bare = $derived(route.name === "foto" || route.name === "geraete" || route.name === "haushalt");
+  const bare = $derived(route.name === "foto" || route.name === "datei" || route.name === "geraete" || route.name === "haushalt");
 </script>
 
 {#if !app.ready}
@@ -116,7 +125,12 @@
     {:else if route.name === "album"}<Album id={route.id!} />
     {:else if route.name === "serie"}<Serie key={route.key!} />
     {:else if route.name === "geraete"}<Geraete />
-    {:else if route.name === "haushalt"}<Haushalt />{/if}
+    {:else if route.name === "haushalt"}<Haushalt />
+    {:else if route.name === "ablage"}<Ablage id={route.id ?? null} />
+    {:else if route.name === "dokumente"}<Dateien kind="doc" />
+    {:else if route.name === "tabellen"}<Dateien kind="sheet" />
+    {:else if route.name === "praesentationen"}<Dateien kind="slides" />
+    {:else if route.name === "datei"}{#key route.id}<Datei id={route.id!} />{/key}{/if}
     {/key}
   </Shell>
 {/if}

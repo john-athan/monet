@@ -2,6 +2,7 @@
 // Also owns the in-memory matrix of image vectors and the label scoring, since both read the same vectors.
 // The vectors come from SigLIP 2 B/32 (docs/ml.md); the table and fields keep their older name "clip".
 import { db } from "./db";
+import { searchDocs } from "./docs";
 import { reindexFts } from "./fts";
 import { parseQuery, SEASON_MONTHS, type ParseCtx } from "./parse";
 import { SHOWN, SUM_COLS, summary } from "./library";
@@ -210,7 +211,9 @@ export function search(owners: number | number[], b: SearchIn, viewer?: number):
   const sort = b.sort === "date" ? "date" : "best";
   const hits = rank(os, chips, vec, sort);
   const limit = Math.max(1, Math.min(1000, Math.floor(b.limit ?? 400))), offset = Math.max(0, Math.floor(b.offset ?? 0));
-  const out: SearchOut = { total: hits.length, items: summaries(os, hits.slice(offset, offset + limit).map(h => h.id), view), relaxed: null };
+  // files whose title or text match the words of the content and text chips (none without words)
+  const words = chips.filter(c => c.kind === "content" || c.kind === "text").map(c => c.value).join(" ");
+  const out: SearchOut = { total: hits.length, items: summaries(os, hits.slice(offset, offset + limit).map(h => h.id), view), relaxed: null, docs: searchDocs(os, words, view) };
 
   // relaxed: drop the most restrictive person (the one with the fewest photos on its own) and say what that would show
   const persons = chips.filter(c => c.kind === "person");

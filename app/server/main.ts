@@ -5,6 +5,8 @@ import { existsSync, statSync } from "node:fs";
 import { extname, join, normalize, sep } from "node:path";
 import { accounts, can, clientIp, ORIGIN, sameOrigin, type Principal } from "./auth";
 import { db } from "./db";
+import * as docs from "./docs";
+import * as folders from "./folders";
 import { ackExport, exportList, status } from "./status";
 import { applySidecar, DATA, ORIGINALS, placeVideos, sweep, thumbPath } from "./ingest";
 import * as lib from "./library";
@@ -69,13 +71,14 @@ const into = (c: Ctx): Principal => {
 };
 /** One photo, wherever it lives in the household: its owner, so the library code can read it as theirs. */
 const ownerOfItem = (item: number): number => (db.query("SELECT owner_id FROM item WHERE id = ?").get(item) as { owner_id: number } | null)?.owner_id ?? 0;
+const ownerOfFolder = (folder: number): number => (db.query("SELECT owner_id FROM folder WHERE id = ?").get(folder) as { owner_id: number } | null)?.owner_id ?? 0;
 const ownerOfFace = (face: number): number => (db.query("SELECT i.owner_id FROM face f JOIN item i ON i.id = f.item_id WHERE f.id = ?").get(face) as { owner_id: number } | null)?.owner_id ?? 0;
 
 /* ---------- files with ETag and Range ---------- */
 const IMMUTABLE = "private, max-age=31536000, immutable";
-function fileResponse(req: Request, path: string, type: string, etag: string, cache = IMMUTABLE): Response {
+function fileResponse(req: Request, path: string, type: string, etag: string, cache = IMMUTABLE, extra: Record<string, string> = {}): Response {
   if (!existsSync(path)) return fail(404, "Das gibt es nicht (mehr).");
-  const h: Record<string, string> = { "content-type": type, etag, "cache-control": cache, "accept-ranges": "bytes" };
+  const h: Record<string, string> = { "content-type": type, etag, "cache-control": cache, "accept-ranges": "bytes", ...extra };
   if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: h });
   const f = Bun.file(path), size = f.size;
   const r = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get("range") ?? "");
@@ -100,6 +103,31 @@ function media(c: Ctx): Response {
   if (!it) return fail(404, "Das gibt es nicht (mehr).");
   if (size === "o") return fileResponse(c.req, join(ORIGINALS, it.orig_path), it.mime, `"${it.sha256}-o"`);
   return fileResponse(c.req, thumbPath(it.sha256, size as "s" | "m" | "l"), "image/webp", `"${it.sha256}-${size}"`);
+}
+
+/** Content-Disposition for the original of a file: ASCII fallback plus RFC 5987 filename*, no control characters. */
+function attachment(name: string): string {
+  const clean = name.replace(/[\u0000-\u001f\u007f]/g, "").trim() || "Datei";
+  const ascii = clean.replace(/[^\x20-\x7e]|["\\%;]/g, "_");
+  const star = encodeURIComponent(clean).replace(/['()*]/g, ch => "%" + ch.charCodeAt(0).toString(16).toUpperCase());
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${star}`;
+}
+/** /media/doc/:id/...: the household's files for a browser session; the original goes out as a download. */
+async function mediaDoc(c: Ctx): Promise<Response> {
+  browser(c.p);
+  const d = docs.rowById(id(c.m[1]));
+  if (!d) return fail(404, "Das gibt es nicht (mehr).");
+  const what = c.m[2];
+  if (what === "o") return fileResponse(c.req, join(ORIGINALS, d.orig_path), d.mime, `"${d.sha256}-o"`, IMMUTABLE, { "content-disposition": attachment(d.orig_name ?? `${d.title}.${d.format}`) });
+  if (what === "c") return fileResponse(c.req, docs.derived(d.sha256, "-c.webp"), "image/webp", `"${d.sha256}-c"`);
+  if (what === "text") {
+    const etag = `"${d.sha256}-text"`;
+    if (c.req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag, "cache-control": IMMUTABLE } });
+    const t = await docs.textOf(d);
+    return t == null ? fail(404, "Das gibt es nicht (mehr).") : new Response(t, { headers: { "content-type": "text/plain; charset=utf-8", etag, "cache-control": IMMUTABLE } });
+  }
+  const page = await docs.pageFile(d, what as "p" | "t", Number(c.m[3]));
+  return page ? fileResponse(c.req, page, "image/webp", `"${d.sha256}-${what}${c.m[3]}"`) : fail(404, "Diese Seite gibt es nicht.");
 }
 
 /* ---------- static client and models ---------- */
@@ -192,6 +220,34 @@ route("GET", "/api/albums/(\\d+)", c => { const a = lib.albumDetail(lib_(c), id(
 route("DELETE", "/api/albums/(\\d+)", c => { lib.deleteAlbum(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });
 route("POST", "/api/albums/(\\d+)/items", async c => { lib.albumItems(browser(c.p).owner, id(c.m[1]), (await body(c.req)).ids, true); return J({ ok: true }); });
 route("DELETE", "/api/albums/(\\d+)/items", async c => { lib.albumItems(browser(c.p).owner, id(c.m[1]), (await body(c.req)).ids, false); return J({ ok: true }); });
+
+/* ---------- files: documents, sheets, slides and the Ablage (docs/files.md) ---------- */
+route("GET", "/api/docs", c => { const q = c.url.searchParams; return J(docs.list(lib_(c), { kind: q.get("kind"), q: q.get("q"), cursor: q.get("cursor"), limit: q.has("limit") ? Number(q.get("limit")) : undefined })); });
+route("GET", "/api/docs/(\\d+)", c => { browser(c.p); const d = docs.detail(id(c.m[1])); return d ? J(d) : fail(404, "Das gibt es nicht (mehr)."); });
+route("PATCH", "/api/docs/(\\d+)", async c => {
+  const p = browser(c.p), b = await body(c.req), i = id(c.m[1]);
+  const s = b.title !== undefined ? docs.rename(p.owner, i, b.title) : docs.summaryById(p.owner, i);
+  return s ? J(s) : fail(404, "Das gibt es nicht (mehr).");
+});
+route("DELETE", "/api/docs/(\\d+)", c => { docs.softDelete(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });
+route("POST", "/api/docs/(\\d+)/restore", c => { docs.softDelete(browser(c.p).owner, id(c.m[1]), true); return J({ ok: true }); });
+route("GET", "/api/docs/(\\d+)/sheet/(\\d+)", async c => {
+  browser(c.p);
+  const d = docs.rowById(id(c.m[1])), q = c.url.searchParams;
+  if (!d) return fail(404, "Das gibt es nicht (mehr).");
+  return J(await docs.sheetRows(d, Number(c.m[2]), Number(q.get("from") ?? 0), q.has("n") ? Number(q.get("n")) : 200));
+});
+route("GET", "/media/doc/(\\d+)/(c|o|text)", mediaDoc);
+route("GET", "/media/doc/(\\d+)/(p|t)/(\\d+)", mediaDoc);
+route("GET", "/api/folders/(\\d+)", c => {
+  browser(c.p);
+  const f = Number(c.m[1]);
+  return J(folders.folderOut(f === 0 ? lib_(c) : ownerOfFolder(f), f));
+});
+route("POST", "/api/folders", async c => { const b = await body(c.req); return J(folders.createFolder(browser(c.p).owner, b.name, b.parentId)); });
+route("PATCH", "/api/folders/(\\d+)", async c => { const p = browser(c.p), b = await body(c.req); return J(folders.renameFolder(p.owner, id(c.m[1]), b.name)); });
+route("DELETE", "/api/folders/(\\d+)", c => { folders.deleteFolder(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });
+route("POST", "/api/move", async c => { const p = browser(c.p); folders.move(p.owner, await body(c.req, 4 << 20)); return J({ ok: true }); });
 
 /* ---------- people and search ---------- */
 route("GET", "/api/people", c => J(people(lib_(c))));
@@ -303,7 +359,9 @@ if (import.meta.main) {
   });
   console.log(`monet listening on ${server.hostname}:${server.port}, origin ${ORIGIN}, ${n} places, data ${DATA}`);
   { const k = placeVideos(); if (k) console.log(`places: ${k} videos without GPS took the place of a photo or video next to them`); }
-  sweep().then(k => k && console.log(`sweep: finished ${k} unfinished items`)).finally(kickOcr);
+  // the photo sweep first, then the files still waiting to be rendered
+  sweep().then(k => k && console.log(`sweep: finished ${k} unfinished items`)).finally(kickOcr)
+    .finally(() => docs.sweepDocs().then(k => k && console.log(`sweep: rendered ${k} pending files`)).catch(e => console.error("sweep docs:", e)));
   lib.purge();
   setInterval(() => lib.purge(), 6 * 3600_000).unref();
   zoom.evict(); setInterval(() => zoom.evict(), 6 * 3600_000).unref();

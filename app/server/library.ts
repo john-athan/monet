@@ -4,6 +4,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { db } from "./db";
 import { dayTitle, daySign, monthPalette } from "./calc";
+import { purgeDocs } from "./docs";
 import { ORIGINALS, rankBurst, thumbPath } from "./ingest";
 import { countryName } from "./places";
 import { HttpError, json, now, todayBerlin } from "./util";
@@ -123,6 +124,7 @@ export function purge(olderThanMs = 30 * 86400_000) {
     db.query("DELETE FROM item_fts WHERE rowid = ?").run(r.id);
     db.query("DELETE FROM item WHERE id = ?").run(r.id);
   }
+  purgeDocs(olderThanMs); // files too, with what was made from them
   return rows.length;
 }
 

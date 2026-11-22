@@ -12,12 +12,12 @@
   const pick = (i?: HTMLInputElement) => { i?.click(); open = false; waiting = true; addEventListener("focus", () => { if (waiting) up.reading = true; }, { once: true }); };
   const drop = () => { waiting = false; up.reading = false; };
 </script>
-<input bind:this={files} type="file" multiple accept="image/*,video/*,.heic,.heif,.dng" hidden onchange={take} oncancel={drop} />
+<input bind:this={files} type="file" multiple accept="image/*,video/*,.heic,.heif,.dng,.pdf,.doc,.docx,.odt,.rtf,.pages,.txt,.md,.markdown,.tex,.xls,.xlsx,.xlsm,.ods,.numbers,.csv,.tsv,.ppt,.pptx,.odp,.key" hidden onchange={take} oncancel={drop} />
 <input bind:this={dir} type="file" multiple hidden onchange={take} oncancel={drop} {...{ webkitdirectory: "" } as any} />
 <Sheet bind:open label="Importieren">
   <h2>Importieren</h2>
-  <p class="m">Fotos und Videos von diesem Gerät. Was schon da ist, wird übersprungen.</p>
-  <button type="button" class="pri" onclick={() => pick(files)}><Icon name="laden" size={18} sw={1.9} />Fotos und Videos wählen</button>
+  <p class="m">Fotos, Videos und Dateien von diesem Gerät. Was schon da ist, wird übersprungen.</p>
+  <button type="button" class="pri" onclick={() => pick(files)}><Icon name="laden" size={18} sw={1.9} />Fotos, Videos und Dateien wählen</button>
   <button type="button" class="sec" onclick={() => pick(dir)}><Icon name="album" size={18} sw={1.9} />Ganzen Ordner wählen</button>
   <p class="m small">Auf dem Computer kannst du Dateien und Ordner auch einfach irgendwo ins Fenster ziehen.</p>
 </Sheet>

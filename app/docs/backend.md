@@ -20,6 +20,9 @@ One Bun process, one SQLite file (WAL), system tools for pixels. Bun built-ins a
 | `server/people.ts`, `cluster.ts` | faces, incremental clustering, people list, merge, crops (cluster.ts is pure) |
 | `server/search.ts`, `parse.ts` | image vector matrix, labels, search and relaxed search (parse.ts is pure) |
 | `server/fts.ts` | the one FTS5 row of an item |
+| `server/docsniff.ts` | which document format a file is (magic bytes, zip directory, text rule), text decoding, CSV, the sheet grid caps and cover SVG (pure) |
+| `server/docs.ts` | files: the row of an upload, the render queue (soffice, vips, pdftotext), pages on demand, sheets, covers, text, list, search, rename, soft delete, purge |
+| `server/folders.ts` | the Ablage: folder CRUD, `FolderOut`, move, `ensurePath` for uploads with `folder=` and `in=` |
 | `server/status.ts` | `/api/status`, export list and acknowledgement |
 | `tools/upload-dir.ts`, `import-takeout.ts`, `upload-lib.ts` | CLIs that speak the upload protocol |
 
@@ -42,6 +45,10 @@ Decisions:
 - A device token cannot claim another source: its `source` is its kind (`android`, `mac`), except `takeout` for the importer.
 - Bursts: same owner, same camera (not NULL), photos, within 2 s of a neighbour; chains merge. Rank by bytes, deleted members do not count.
 - The sidecar follows the date order of the spec: it fills the date only when the file had no EXIF and no date in its name, and a place only when the file had no GPS.
+
+## Files
+
+Documents, spreadsheets and presentations (view and organise only) and the one tree of folders beside the photos: `docs/files.md` is the contract, `server/docs.ts` and `server/folders.ts` implement it. Uploads use the same chunked route; the last chunk classifies the whole file (a text name wins over picture-like bytes) and answers `{doc}` instead of `{item}`. Rendering shares `ingest.enqueue` with the photo pipeline, so only one heavy job runs at a time.
 
 ## Auth
 

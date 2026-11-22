@@ -32,6 +32,15 @@
     plus: '<path d="M12 5v14M5 12h14"/>',
     hoch: '<path d="M12 19.5V5M6 11l6-6 6 6"/>',
     ort: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+    // files: a drawer, a page with lines, a grid, a screen, folders, download, move
+    ablage: '<rect x="3.5" y="4" width="17" height="6.5" rx="1.5"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.5"/><path d="M10 7.25h4M10 16.75h4"/>',
+    dokumente: '<path d="M6.5 3.5H14l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M14 3.5V8h4.5M8.5 12.5h7M8.5 16h7"/>',
+    tabellen: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 10h17M3.5 15h17M9.5 4.5v15"/>',
+    praesentationen: '<rect x="3.5" y="4" width="17" height="11.5" rx="1.5"/><path d="M12 15.5V20M8 20.5h8M7.5 12l3-3 2.5 2.5 3.5-4"/>',
+    ordner: '<path d="M3.5 18V6A1.5 1.5 0 0 1 5 4.5h4.2l2 2.5H19A1.5 1.5 0 0 1 20.5 8.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/>',
+    "ordner-neu": '<path d="M3.5 18V6A1.5 1.5 0 0 1 5 4.5h4.2l2 2.5H19A1.5 1.5 0 0 1 20.5 8.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><path d="M12 10.5v5M9.5 13h5"/>',
+    herunterladen: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
+    verschieben: '<path d="M3.5 18V6A1.5 1.5 0 0 1 5 4.5h4.2l2 2.5H19A1.5 1.5 0 0 1 20.5 8.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><path d="M8 13h8M13 10l3 3-3 3"/>',
     // a palette with three dabs in the colours of the rooms
     stil: '<path d="M12 3.5c-5 0-8.5 3.6-8.5 8.2 0 4.5 3.6 8.3 8 8.3 1.3 0 2-.8 2-1.8 0-1.3-1.1-1.7-1.1-2.9 0-1 .8-1.6 1.9-1.6h2.3c2.3 0 3.9-1.7 3.9-4.1 0-3.4-3.6-6.1-8.5-6.1z"/><circle cx="7.8" cy="11.4" r="1.35" fill="var(--teich)" stroke="none"/><circle cx="10.2" cy="7.4" r="1.35" fill="var(--esszimmer)" stroke="none"/><circle cx="14.8" cy="7.6" r="1.35" fill="var(--atelier)" stroke="none"/>',
   };
@@ -59,6 +68,13 @@
     tablet: '<path d="M4.5 3h15v18h-15z"/><path d="M11 18h2"/>',
     folge: '<path d="M7 7h13v13H7z"/><path d="M4 16V4h12"/>',
     original: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path d="M8.5 8.5h7v7h-7z"/>',
+    ablage: '<path d="M3.5 4h17v6.5h-17zM3.5 13.5h17V20h-17z"/><path d="M10 7.25h4M10 16.75h4"/>',
+    dokumente: '<path d="M5 3.5h9l4.5 4.5v12.5H5z"/><path d="M14 3.5V8h4.5M8.5 12.5h7M8.5 16h7"/>',
+    tabellen: '<path d="M3.5 4.5h17v15h-17zM3.5 10h17M3.5 15h17M9.5 4.5v15"/>',
+    praesentationen: '<path d="M3.5 4h17v11.5h-17zM12 15.5V20M8 20.5h8M7.5 12l3-3 2.5 2.5 3.5-4"/>',
+    ordner: '<path d="M3.5 19.5V4.5h6l2 2.5h9v12.5z"/>',
+    "ordner-neu": '<path d="M3.5 19.5V4.5h6l2 2.5h9v12.5z"/><path d="M12 10.5v5M9.5 13h5"/>',
+    verschieben: '<path d="M3.5 19.5V4.5h6l2 2.5h9v12.5z"/><path d="M8 13h8M13 10l3 3-3 3"/>',
     // a cog cut from wood, with the ring sun as its hub
     stil: '<path d="' + GEAR + '"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
   };

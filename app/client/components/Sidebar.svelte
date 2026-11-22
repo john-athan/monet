@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SECTIONS, sectionOf } from "../lib/nav";
+  import { SECTIONS, FILES, sectionOf, fileOf } from "../lib/nav";
   import { app, light, local, viewing, house, genitive, within } from "../lib/state.svelte";
   import Mark from "./Mark.svelte";
   import { lists, status } from "../lib/stores.svelte";
@@ -8,6 +8,7 @@
   import Link from "./Link.svelte";
   import Icon from "./Icon.svelte";
   const cur = $derived(sectionOf(local()));
+  const curFile = $derived(fileOf(local()));
   const others = $derived(house.members.filter(m => m.id !== house.me && (m.joined || m.count > 0)));
   const on = $derived(viewing());
   const dr = $derived($darkroomStatus);
@@ -24,6 +25,13 @@
     <Link href={s.path} class="nav" style={s.key === cur ? "color:var(--ink)" : ""} aria-current={s.key === cur ? "page" : undefined}>
       <Icon name={s.key} size={20} />
       <span class="lab">{s.label}{#if s.key === cur}<span aria-hidden="true" class="dab stroke" style="left:-2px;right:-6px;bottom:-3px;height:6px;background:var({s.room});opacity:.7;transform:rotate(-3deg)"></span>{/if}</span>
+    </Link>
+  {/each}
+  <h2 class="files">Dateien</h2>
+  {#each FILES as f}
+    <Link href={f.path} class="nav" style={f.key === curFile ? "color:var(--ink)" : ""} aria-current={f.key === curFile ? "page" : undefined}>
+      <Icon name={f.icon} size={20} />
+      <span class="lab">{f.label}{#if f.key === curFile}<span aria-hidden="true" class="dab stroke" style="left:-2px;right:-6px;bottom:-3px;height:6px;background:var({f.room});opacity:.7;transform:rotate(-3deg)"></span>{/if}</span>
     </Link>
   {/each}
   <h2><Link href="/haushalt" class="hh">Haushalt</Link></h2>

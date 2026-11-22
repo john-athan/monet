@@ -11,6 +11,7 @@
   import Tile from "../components/Tile.svelte";
   import Icon from "../components/Icon.svelte";
   import Loading from "../components/Loading.svelte";
+  import DocCard from "../components/DocCard.svelte";
 
   const q = $derived(new URLSearchParams(app.query).get("q") ?? "");
   let chips = $state<Chip[]>([]), out = $state<SearchOut | null>(null), sort = $state<"best" | "date">("best");
@@ -105,6 +106,12 @@
   {#if note === "loading"}<p class="msg quiet" role="status">Die Bildsuche lädt noch. Bis dahin zählen nur Namen, Orte, Daten und Text.</p>{/if}
   {#if note === "failed"}<p class="msg quiet" role="status">Die Bildsuche ist gerade nicht erreichbar. Namen, Orte, Daten und Text gelten trotzdem.</p>{/if}
   {#if out}
+    {#if out.docs?.length}
+      <section class="files" aria-label="Dateien">
+        <h2>Dateien</h2>
+        <div class="strip">{#each out.docs as d (d.id)}<div class="dc"><DocCard doc={d} /></div>{/each}</div>
+      </section>
+    {/if}
     <section aria-label="Treffer">
       <div class="top">
         <h2 class="tnum">{count(out.total, "Foto", "Fotos")}</h2>
@@ -113,7 +120,7 @@
           <button type="button" aria-pressed={sort === "date"} onclick={() => setSort("date")}>Nach Datum</button>
         </div>
       </div>
-      {#if !items.length}<p class="msg">Dazu hat Monet nichts gefunden.</p>
+      {#if !items.length}<p class="msg">{out.docs?.length ? "Dazu hat Monet keine Fotos gefunden." : "Dazu hat Monet nichts gefunden."}</p>
       {:else if app.wide}
         <div class="rows">{#each wideRows as r}<div class="row" style="height:{r.h}px">{#each r.tiles as t}<div style="width:{t.w}px;height:{r.h}px"><Tile item={items[t.i]} sizes="{Math.round(t.w)}px" /></div>{/each}</div>{/each}</div>
       {:else}
@@ -184,6 +191,9 @@
   .grid > .hero { grid-column: span 2; grid-row: span 2; }
   .rows { display: flex; flex-direction: column; gap: 4px; } .row { display: flex; gap: 4px; } .row > div { flex: none; }
   .msg { padding: 14px; } .quiet { color: var(--muted); font-size: 13px; padding: 0 14px 10px; } .w .msg { padding-left: 0; }
+  .files h2 { font-size: 22px; padding: 0 14px 8px; } .w .files h2 { padding-left: 0; }
+  .strip { display: flex; gap: 12px; overflow-x: auto; padding: 0 14px 14px; align-items: flex-start; } .w .strip { padding-left: 0; }
+  .dc { flex: none; width: 132px; }
   .more { padding: 10px 8px 0; }
   .more button { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 10px; border: 0; border-radius: 14px; background: transparent; text-align: left; }
   .more button:hover { background: var(--surface-2); }

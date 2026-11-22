@@ -66,6 +66,27 @@ const MIGRATIONS: string[] = [
      created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, used_at INTEGER) STRICT;`,
   // videos recorded without a GPS fix were placed at 0°/0° (the photo path already dropped it): no place at all
   `UPDATE item SET lat = NULL, lon = NULL, place_id = NULL WHERE lat = 0 AND lon = 0;`,
+  // files (docs/files.md): documents, sheets and slides beside the photos, and one tree of folders that holds both
+  `CREATE TABLE folder (id INTEGER PRIMARY KEY, owner_id INTEGER NOT NULL REFERENCES owner(id), parent_id INTEGER REFERENCES folder(id),
+     name TEXT NOT NULL, created_at INTEGER NOT NULL) STRICT;
+   CREATE UNIQUE INDEX folder_name ON folder(owner_id, coalesce(parent_id, 0), name);
+   ALTER TABLE item ADD COLUMN folder_id INTEGER REFERENCES folder(id) ON DELETE SET NULL;
+   CREATE INDEX item_folder ON item(folder_id) WHERE folder_id IS NOT NULL;
+   CREATE TABLE doc (
+     id INTEGER PRIMARY KEY, owner_id INTEGER NOT NULL REFERENCES owner(id), sha256 TEXT NOT NULL,
+     kind TEXT NOT NULL CHECK (kind IN ('doc','sheet','slides')), format TEXT NOT NULL, mime TEXT NOT NULL, bytes INTEGER NOT NULL,
+     title TEXT NOT NULL, orig_name TEXT, folder_id INTEGER REFERENCES folder(id) ON DELETE SET NULL,
+     pages INTEGER, width REAL NOT NULL DEFAULT 0, height REAL NOT NULL DEFAULT 0,
+     modified_at INTEGER NOT NULL, uploaded_at INTEGER NOT NULL, source TEXT NOT NULL, device_id INTEGER, orig_path TEXT NOT NULL,
+     state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','ok','failed')), error TEXT, text TEXT,
+     -- sheets: JSON [{name, rows, cols, truncated}]
+     sheets TEXT, deleted_at INTEGER,
+     UNIQUE (owner_id, sha256)) STRICT;
+   CREATE INDEX doc_kind ON doc(owner_id, kind, modified_at);
+   CREATE INDEX doc_folder ON doc(folder_id) WHERE folder_id IS NOT NULL;
+   CREATE INDEX doc_pending ON doc(state) WHERE state = 'pending';
+   -- rowid = doc.id
+   CREATE VIRTUAL TABLE doc_fts USING fts5(title, text, tokenize='unicode61 remove_diacritics 2');`,
 ];
 
 const version = (db.query("PRAGMA user_version").get() as { user_version: number }).user_version;

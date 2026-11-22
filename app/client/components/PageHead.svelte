@@ -16,7 +16,7 @@
 </header>
 <style>
   header { padding: 22px 18px 8px; display: flex; flex-direction: column; gap: 4px; }
-  .in { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .in { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .ttl { position: relative; width: max-content; max-width: 100%; }
   h1 { position: relative; font-size: 40px; line-height: 1; }
   p { font-size: 13px; color: var(--muted); }

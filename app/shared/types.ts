@@ -66,7 +66,7 @@ export interface Chip { kind: ChipKind; label: string; value: string }
 export interface ParseOut { chips: Chip[]; rest: string }
 /** everyone: search the whole household, not only the library being looked at */
 export interface SearchIn { chips: Chip[]; vec?: string; sort?: "best" | "date"; limit?: number; offset?: number; everyone?: boolean }
-export interface SearchOut { total: number; items: ItemSummary[]; relaxed: { label: string; count: number } | null }
+export interface SearchOut { total: number; items: ItemSummary[]; relaxed: { label: string; count: number } | null; /** files whose title or text match the words (docs/files.md) */ docs: DocSummary[] }
 
 /** What the image model recognised: one label, how many shown photos carry it, and the photo that carries it most clearly. */
 export interface ThingOut { label: string; count: number; item: number }
@@ -88,10 +88,13 @@ export interface Status {
   theme: Theme;
   /** originals the Mac confirmed as copied (POST /api/export/ack): how many, and when the last one was */
   secondCopy: { n: number; last: number | null };
+  /** files in the library, and how many of them are still being rendered */
+  docs: { n: number; pending: number };
 }
 export interface ExportRow { id: number; sha256: string; ext: string; bytes: number; takenAt: number }
 
-export interface UploadDone { item: ItemSummary; duplicate: boolean }
+/** a photo or video answers with item, a document with doc (docs/files.md) */
+export type UploadDone = { item: ItemSummary; duplicate: boolean } | { doc: DocSummary; duplicate: boolean };
 /** Accounts, passkeys, sessions and links are the accounts module's shapes (shared/accounts.ts); a device adds what Monet counts. */
 export type DeviceOut = AccountDevice & { kind: "android" | "mac"; uploads: number; lastUpload: number | null };
 
@@ -102,3 +105,50 @@ export type Light = "morgen" | "mittag" | "abend" | "nacht";
 /** joined: has a passkey (false while the invite is open) */
 export interface Member { id: number; name: string; theme: Theme; count: number; cover: number | null; joined: boolean }
 export interface HouseholdOut { me: number; members: Member[] }
+
+/* ---------- files: documents, sheets, slides and the folders that hold everything (docs/files.md) ---------- */
+/** doc: text documents and most PDFs; sheet: spreadsheets and CSV; slides: presentations and landscape PDFs */
+export type DocKind = "doc" | "sheet" | "slides";
+/** pending: the original is stored, the pages are still being made; failed: only the original can be downloaded */
+export type DocState = "pending" | "ok" | "failed";
+export interface DocSummary {
+  id: number; kind: DocKind;
+  /** the file name without its extension; can be renamed */
+  title: string;
+  /** lower case extension of the original: 'docx', 'pdf', 'csv', 'key' ... */
+  format: string;
+  bytes: number;
+  /** pages or slides (null until rendered, and for sheets) */
+  pages: number | null;
+  /** size of the first page or the cover, any unit; only the ratio counts (0 until rendered) */
+  w: number; h: number;
+  /** ms UTC: the file's own modification time as the client sent it, else the upload time */
+  modifiedAt: number;
+  state: DocState;
+  folderId: number | null;
+  /** set when the file belongs to another person than the library being looked at */
+  owner?: number;
+}
+export interface DocDetail extends Omit<DocSummary, "owner"> {
+  owner: number; sha256: string; mime: string; origName: string | null; uploadedAt: number;
+  /** why rendering failed, in German, when state is 'failed' */
+  error: string | null;
+  /** the folders from the top down to the one holding the file (empty: at the top of the Ablage) */
+  path: { id: number; name: string }[];
+  /** sheets only: name, number of rows and columns of every sheet, in order */
+  sheets: { name: string; rows: number; cols: number; truncated: boolean }[];
+  deletedAt: number | null;
+}
+export interface DocList { docs: DocSummary[]; next: string | null }
+/** a window of one sheet: rows[from .. from + rows.length), each row padded to the sheet's cols */
+export interface SheetRows { from: number; rows: string[][] }
+export interface FolderSummary { id: number; name: string; /** files and photos directly inside, plus subfolders */ count: number; /** up to 4 covers to paint the folder with */ peek: ({ doc: number } | { item: number })[] }
+export interface FolderOut {
+  /** null: the top of the Ablage */
+  id: number | null; name: string;
+  path: { id: number; name: string }[];
+  folders: FolderSummary[];
+  docs: DocSummary[];
+  items: ItemSummary[];
+}
+export interface MoveIn { into: number | null; docs?: number[]; items?: number[]; folders?: number[] }

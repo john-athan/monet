@@ -1,6 +1,6 @@
 <script lang="ts">
   // Drag files or folders anywhere on the window (desktop). On another person's library they go into that library.
-  import { addFiles, filesFromDrop } from "../lib/upload.svelte";
+  import { addFiles, filesFromDrop, dest } from "../lib/upload.svelte";
   import { viewing, member, genitive } from "../lib/state.svelte";
   const guest = $derived(viewing() != null ? member(viewing()) : undefined);
   let over = $state(false), depth = 0;
@@ -15,7 +15,7 @@
   });
 </script>
 {#if over}
-  <div class="drop" role="status"><p>{guest ? `Zum Importieren in ${genitive(guest.name)} Fotos hier loslassen` : "Zum Importieren hier loslassen"}</p></div>
+  <div class="drop" role="status"><p>{dest.name ? `Zum Ablegen in „${dest.name}“ hier loslassen` : guest ? `Zum Importieren in ${genitive(guest.name)} Fotos hier loslassen` : "Zum Importieren hier loslassen"}</p></div>
 {/if}
 <style>
   .drop { position: fixed; inset: 10px; z-index: 50; border-radius: 24px; background: var(--glass); box-shadow: inset 0 0 0 3px var(--sun); display: grid; place-items: center; pointer-events: none; backdrop-filter: blur(6px); }

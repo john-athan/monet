@@ -1,5 +1,6 @@
 // /api/status and /api/export/list: counts for the Geräte page and the Mac's second copy.
 import { db } from "./db";
+import { counts } from "./docs";
 import { now } from "./util";
 import type { ExportRow, Status, Theme } from "../shared/types";
 
@@ -24,6 +25,7 @@ export function status(owner: number): Status {
     devices: c("SELECT count(*) AS n FROM auth_device WHERE account_id = ? AND revoked_at IS NULL"),
     secondCopy: (db.query("SELECT count(second_copy_at) AS n, max(second_copy_at) AS last FROM item WHERE owner_id = ?").get(owner) as { n: number; last: number | null }),
     lastUpload: (db.query("SELECT max(uploaded_at) AS m FROM item WHERE owner_id = ?").get(owner) as { m: number | null }).m,
+    docs: counts(owner),
     theme: ((db.query("SELECT theme FROM owner WHERE id = ?").get(owner) as { theme: Theme } | null)?.theme) ?? "monet",
   };
 }

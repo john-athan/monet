@@ -4,6 +4,9 @@
 import { closeSync, existsSync, ftruncateSync, mkdirSync, openSync, readdirSync, readSync, rmSync, statSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import { db } from "./db";
+import { docCandidate, isTextName, sniffDoc, type DocType } from "./docsniff";
+import { ingestDoc, summaryById as docById } from "./docs";
+import { ensurePath } from "./folders";
 import { DATA, ingest, SOURCES, sniff } from "./ingest";
 import { summaryById } from "./library";
 import { fail, HttpError, J } from "./util";
@@ -34,11 +37,11 @@ export function evictParts(at = Date.now()): number {
 
 export function check(owner: number, hashes: unknown) {
   const list = (Array.isArray(hashes) ? hashes : []).filter((h): h is string => typeof h === "string" && SHA.test(h)).slice(0, 2000);
-  // soft-deleted items count as present: a photo deleted on purpose must not come back from the next sync
+  // soft-deleted items count as present: a photo deleted on purpose must not come back from the next sync; files likewise
   const have = new Set<string>();
   for (let i = 0; i < list.length; i += 500) {
-    const part = list.slice(i, i + 500);
-    for (const r of db.query(`SELECT sha256 FROM item WHERE owner_id = ? AND sha256 IN (${part.map(() => "?").join(",")})`).all(owner, ...part) as { sha256: string }[]) have.add(r.sha256);
+    const part = list.slice(i, i + 500), marks = part.map(() => "?").join(",");
+    for (const t of ["item", "doc"]) for (const r of db.query(`SELECT sha256 FROM ${t} WHERE owner_id = ? AND sha256 IN (${marks})`).all(owner, ...part) as { sha256: string }[]) have.add(r.sha256);
   }
   return { missing: list.filter(h => !have.has(h)) };
 }
@@ -51,6 +54,29 @@ async function sha256File(path: string): Promise<string> {
 function head(path: string, n = 32): Uint8Array {
   const fd = openSync(path, "r"); const b = new Uint8Array(n);
   try { const got = readSync(fd, b, 0, n, 0); return b.slice(0, got); } finally { closeSync(fd); }
+}
+/** The final decision whether a whole file is a document: the head and the zip directory are read from where they lie. */
+function sniffDocFile(path: string, name: string | null): DocType | null {
+  const fd = openSync(path, "r");
+  try {
+    return sniffDoc({ size: statSync(path).size, read: (off, len) => { const b = new Uint8Array(len); return b.subarray(0, readSync(fd, b, 0, len, off)); } }, name);
+  } finally { closeSync(fd); }
+}
+/** folder= (a path below in=) and in= (a folder id) of an upload: undefined when the client named neither, else the folder
+ *  the file belongs in (null: the top). Missing folders on the way are made. */
+function folderOf(owner: number, url: URL): number | null | undefined {
+  const path = url.searchParams.get("folder"), raw = url.searchParams.get("in");
+  if (!path && !raw) return undefined;
+  const inId = raw ? Number(raw) : 0;
+  if (!Number.isInteger(inId) || inId < 0) throw new HttpError(400, "Ungültiger Ordner.");
+  return ensurePath(owner, inId || null, path);
+}
+/** A file that is already in the library keeps its row; it goes into the named folder only if it had none. */
+function placeKnown(table: "item" | "doc", owner: number, id: number, url: URL) {
+  const r = db.query(`SELECT folder_id FROM ${table} WHERE id = ? AND owner_id = ?`).get(id, owner) as { folder_id: number | null } | null;
+  if (!r || r.folder_id != null) return;
+  const f = folderOf(owner, url);
+  if (f != null) db.query(`UPDATE ${table} SET folder_id = ? WHERE id = ?`).run(f, id);
 }
 
 export async function putChunk(req: Request, p: Principal, sha: string): Promise<Response> {
@@ -67,8 +93,16 @@ export async function putChunk(req: Request, p: Principal, sha: string): Promise
   if (existing) {
     await drain(req);
     rmSync(partPath(sha), { force: true });
+    placeKnown("item", p.owner, existing.id, url);
     const s = summaryById(p.owner, existing.id)!;
     return J({ item: s, duplicate: true } satisfies UploadDone);
+  }
+  const knownDoc = db.query("SELECT id FROM doc WHERE owner_id = ? AND sha256 = ?").get(p.owner, sha) as { id: number } | null;
+  if (knownDoc) {
+    await drain(req);
+    rmSync(partPath(sha), { force: true });
+    placeKnown("doc", p.owner, knownDoc.id, url);
+    return J({ doc: docById(p.owner, knownDoc.id)!, duplicate: true } satisfies UploadDone);
   }
   if (busy.has(sha)) { await drain(req); return fail(409, "Dieser Upload läuft gerade.", { received: existsSync(partPath(sha)) ? statSync(partPath(sha)).size : 0 }); }
   busy.add(sha);
@@ -94,7 +128,8 @@ export async function putChunk(req: Request, p: Principal, sha: string): Promise
     if (wrote !== len) { return fail(409, "Der Block war unvollständig.", { received: statSync(part).size }); }
     const size = have + wrote;
     // refuse unknown formats at the first chunk, before gigabytes arrive
-    if (offset === 0 && !sniff(head(part))) { rmSync(part, { force: true }); return fail(415, "Dieses Dateiformat wird nicht unterstützt."); }
+    // (photos and videos by their magic bytes; a document candidate is decided at the last chunk, when the whole file is there)
+    if (offset === 0 && !sniff(head(part)) && !docCandidate(head(part, 65536), url.searchParams.get("name"))) { rmSync(part, { force: true }); return fail(415, "Dieses Dateiformat wird nicht unterstützt."); }
     if (size < total) return J({ received: size });
     return await finish(p, sha, part, size, url);
   } catch (e) {
@@ -113,13 +148,23 @@ async function drain(req: Request) {
 async function finish(p: Principal, sha: string, part: string, size: number, url: URL): Promise<Response> {
   const actual = await sha256File(part);
   if (actual !== sha) { rmSync(part, { force: true }); return fail(422, "Die Prüfsumme stimmt nicht. Bitte noch einmal hochladen.", { received: 0 }); }
-  const sniffed = sniff(head(part));
-  if (!sniffed) { rmSync(part, { force: true }); return fail(415, "Dieses Dateiformat wird nicht unterstützt."); }
   const name = url.searchParams.get("name"), mtime = Number(url.searchParams.get("mtime"));
+  // a name that only text can carry wins over picture-like first bytes (a note that starts with "GIF")
+  let doc = isTextName(name) ? sniffDocFile(part, name) : null;
+  const sniffed = doc ? null : sniff(head(part));
+  if (!sniffed && !doc) doc = sniffDocFile(part, name);
+  if (!sniffed && !doc) { rmSync(part, { force: true }); return fail(415, "Dieses Dateiformat wird nicht unterstützt."); }
   const dev = p.deviceId != null ? (db.query("SELECT kind FROM auth_device WHERE id = ?").get(p.deviceId) as { kind: string } | null) : null;
   const wanted = url.searchParams.get("source") ?? "web";
   // a device cannot claim to be another kind of source (the Takeout importer runs on a device token and says so)
   const source = dev ? (wanted === "takeout" ? "takeout" : dev.kind) : SOURCES.includes(wanted) ? wanted : "web";
-  const r = await ingest({ owner: p.owner, sha, tmp: part, bytes: size, name, mtime: Number.isFinite(mtime) && mtime > 0 ? mtime : null, source, deviceId: p.deviceId, sniffed });
+  const when = Number.isFinite(mtime) && mtime > 0 ? mtime : null;
+  const folderId = folderOf(p.owner, url); // before anything is stored: a folder that is gone is a 404 and the part stays
+  if (doc) {
+    const r = ingestDoc({ owner: p.owner, sha, tmp: part, bytes: size, name, mtime: when, source, deviceId: p.deviceId, type: doc, folderId });
+    return J({ doc: docById(p.owner, r.id)!, duplicate: r.duplicate } satisfies UploadDone);
+  }
+  const r = await ingest({ owner: p.owner, sha, tmp: part, bytes: size, name, mtime: when, source, deviceId: p.deviceId, sniffed: sniffed! });
+  if (folderId != null) db.query("UPDATE item SET folder_id = ? WHERE id = ? AND owner_id = ? AND (folder_id IS NULL OR ?)").run(folderId, r.id, p.owner, r.duplicate ? 0 : 1);
   return J({ item: summaryById(p.owner, r.id)!, duplicate: r.duplicate } satisfies UploadDone);
 }
