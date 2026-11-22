@@ -1,4 +1,4 @@
-// The full-text row of one item: OCR text, labels, place, people, file name. Rebuilt whenever one of them changes.
+// The full-text row of one item: OCR text and transcript, labels, place, people, file name. Rebuilt whenever one of them changes.
 import { db } from "./db";
 import { countryName } from "./places";
 
@@ -11,6 +11,8 @@ export function reindexFts(itemId: number) {
   const people = (db.query("SELECT DISTINCT p.name FROM face f JOIN person p ON p.id = f.person_id WHERE f.item_id = ? AND p.name IS NOT NULL").all(itemId) as { name: string }[]).map(r => r.name).join(" ");
   // the file name without its extension, with separators as spaces so "IMG_2019" tokenises sensibly
   const name = (it.orig_name ?? "").replace(/\.[A-Za-z0-9]{2,5}$/, "").replace(/[_\-.]+/g, " ");
+  // what is said in a video sits beside the text read in a photo (docs/together.md, "Transcripts")
+  const spoken = (db.query("SELECT text FROM transcript WHERE ref = 'item' AND ref_id = ?").get(itemId) as { text: string } | null)?.text ?? "";
   db.query("INSERT INTO item_fts (rowid, ocr_text, labels, place, people, orig_name) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(itemId, it.ocr_text ?? "", labels, pl ? `${pl.name} ${pl.admin1 ?? ""} ${countryName(pl.country)}` : "", people, name);
+    .run(itemId, `${it.ocr_text ?? ""} ${spoken}`.trim(), labels, pl ? `${pl.name} ${pl.admin1 ?? ""} ${countryName(pl.country)}` : "", people, name);
 }

@@ -12,6 +12,9 @@ import { applySidecar, DATA, ORIGINALS, placeVideos, sweep, thumbPath } from "./
 import * as lib from "./library";
 import * as stack from "./stack";
 import * as zoom from "./zoom";
+import * as together from "./together";
+import * as docvec from "./docvec";
+import { moment, moments } from "./moments";
 import { faceCrop, editPerson, loadCentroids, releaseWeak, mergePeople, moveFace, people, storeFaces } from "./people";
 import { loadPlaces } from "./places";
 import * as house from "./household";
@@ -113,10 +116,17 @@ function attachment(name: string): string {
   const star = encodeURIComponent(clean).replace(/['()*]/g, ch => "%" + ch.charCodeAt(0).toString(16).toUpperCase());
   return `attachment; filename="${ascii}"; filename*=UTF-8''${star}`;
 }
+/** The file a media request names. A browser reads the whole household's; a device with scope index (the darkroom in
+ *  the Mac's WebView, the Mac's transcription) reads its own owner's covers, small pages and recordings, nothing else. */
+function docOf(c: Ctx, what: string) {
+  const p = need(c.p), d = docs.rowById(id(c.m[1]));
+  if (p.kind === "browser") return d;
+  if (!can(p, "index") || !["c", "t", "play"].includes(what)) throw new HttpError(403, "Das ist nicht erlaubt.");
+  return d && d.owner_id === p.owner ? d : null;
+}
 /** /media/doc/:id/...: the household's files for a browser session; the original goes out as a download. */
 async function mediaDoc(c: Ctx): Promise<Response> {
-  browser(c.p);
-  const d = docs.rowById(id(c.m[1]));
+  const d = docOf(c, c.m[2]);
   if (!d) return fail(404, "Das gibt es nicht (mehr).");
   const what = c.m[2];
   if (what === "o") return fileResponse(c.req, join(ORIGINALS, d.orig_path), d.mime, `"${d.sha256}-o"`, IMMUTABLE, { "content-disposition": attachment(d.orig_name ?? `${d.title}.${d.format}`) });
@@ -227,7 +237,7 @@ route("POST", "/api/items/(\\d+)/sidecar", async c => {
 /* ---------- library ---------- */
 route("GET", "/api/timeline", c => {
   const q = c.url.searchParams;
-  return J(lib.timeline(lib_(c), { cursor: q.get("cursor"), from: q.get("from"), limit: Number(q.get("limit") ?? 24), favorite: q.get("favorite") === "1", album: q.get("album") ? Number(q.get("album")) : null }));
+  return J(lib.timeline(lib_(c), { cursor: q.get("cursor"), from: q.get("from"), limit: Number(q.get("limit") ?? 24), favorite: q.get("favorite") === "1", album: q.get("album") ? Number(q.get("album")) : null, files: q.get("files") !== "0" }));
 });
 route("GET", "/api/band", c => J(lib.band(lib_(c))));
 route("GET", "/api/items/(\\d+)", c => { browser(c.p); const i = id(c.m[1]); const d = lib.detail(ownerOfItem(i), i); return d ? J(d) : fail(404, "Das gibt es nicht (mehr)."); });
@@ -264,6 +274,8 @@ route("PATCH", "/api/docs/(\\d+)", async c => {
   const s = b.title !== undefined ? docs.rename(p.owner, i, b.title) : docs.summaryById(p.owner, i);
   return s ? J(s) : fail(404, "Das gibt es nicht (mehr).");
 });
+route("GET", "/api/docs/(\\d+)/stack", c => J(together.stackOf(id(c.m[1]), lib_(c))));
+route("POST", "/api/docs/(\\d+)/unstack", c => { together.unstackDoc(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });
 route("DELETE", "/api/docs/(\\d+)", c => { docs.softDelete(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });
 route("POST", "/api/docs/(\\d+)/restore", c => { docs.softDelete(browser(c.p).owner, id(c.m[1]), true); return J({ ok: true }); });
 route("GET", "/api/docs/(\\d+)/sheet/(\\d+)", async c => {
@@ -279,8 +291,7 @@ route("GET", "/api/docs/(\\d+)/book", c => {
 });
 route("GET", "/media/doc/(\\d+)/book/(.+)", mediaBook);
 route("GET", "/media/doc/(\\d+)/play", c => {
-  browser(c.p);
-  const d = docs.rowById(id(c.m[1]));
+  const d = docOf(c, "play");
   if (!d || d.kind !== "audio") return fail(404, "Das gibt es nicht (mehr).");
   return fileResponse(c.req, join(ORIGINALS, d.orig_path), d.mime, `"${d.sha256}-o"`, IMMUTABLE, { "content-disposition": "inline" });
 });
@@ -306,6 +317,16 @@ const searchOwners = (c: Ctx, everyone: unknown) => everyone === true ? house.ow
 route("POST", "/api/search/parse", async c => { const b = await body(c.req); return J(search.parse(searchOwners(c, b.everyone), b.q)); });
 route("POST", "/api/search", async c => { const b = await body(c.req); return J(search.search(searchOwners(c, b.everyone), b, lib_(c))); });
 
+/* ---------- everything together (docs/together.md) ---------- */
+// the files that name a person or a place: the person's and the place's pages show them
+route("GET", "/api/links", c => {
+  const q = c.url.searchParams, kind = q.has("person") ? "person" : "place", ref = Number(q.get(kind));
+  if (!Number.isInteger(ref) || ref <= 0) throw new HttpError(400, "Wer oder wo?");
+  return J(together.linkedDocs(kind, ref, [lib_(c)], lib_(c)));
+});
+route("GET", "/api/moments", c => J(moments(lib_(c))));
+route("GET", "/api/moments/(\\d{4}-\\d{2}-\\d{2})", c => { const m = moment(lib_(c), c.m[1]); return m ? J(m) : fail(404, "Diesen Moment gibt es nicht (mehr)."); });
+
 /* ---------- household ---------- */
 route("GET", "/api/household", c => J(house.household(browser(c.p).owner)));
 route("PATCH", "/api/household/me", async c => { const p = browser(c.p); house.setProfile(p.owner, await body(c.req)); return J(house.household(p.owner)); });
@@ -326,11 +347,34 @@ route("GET", "/api/index/pending", c => {
     AND (${cond.join(" OR ")}) ORDER BY owner_id = ? DESC, taken_at DESC LIMIT ?`).all(...(all ? [] : [p.owner]), p.owner, limit) as any[];
   return J(rows.map(r => ({ id: r.id, kind: r.kind, needs: [!r.clip_ok && "clip", !r.faces_ok && "faces", !r.ocr_ok && r.kind === "photo" && "ocr"].filter(Boolean) })));
 });
+// files: the pictures and text pieces to embed (docvec.ts); a browser works for the whole household, a device for its owner
+route("GET", "/api/index/docs/pending", c => {
+  const p = scope(c.p, "index"), limit = Math.max(1, Math.min(50, Number(c.url.searchParams.get("limit") ?? 8) || 8));
+  return J(docvec.pendingDocs(p.kind === "browser" ? null : p.owner, p.owner, limit));
+});
+route("POST", "/api/index/doc/(\\d+)", async c => {
+  const p = scope(c.p, "index"), d = docs.rowById(id(c.m[1]));
+  if (!d || (p.kind !== "browser" && d.owner_id !== p.owner)) throw new HttpError(404, "Das gibt es nicht (mehr).");
+  docvec.storeDocVecs(d.id, await body(c.req, 8 << 20));
+  return J({ ok: true });
+});
+// speech: the Mac transcribes videos and recordings of its owner (together.ts)
+route("GET", "/api/index/speech/pending", c => {
+  const p = scope(c.p, "index"), limit = Math.max(1, Math.min(50, Number(c.url.searchParams.get("limit") ?? 10) || 10));
+  return J(together.speechPending(p.owner, limit));
+});
+route("POST", "/api/index/speech/(item|doc)/(\\d+)", async c => {
+  const p = scope(c.p, "index"), ref = c.m[1] as "item" | "doc", n = id(c.m[2]);
+  const row = db.query(`SELECT owner_id FROM ${ref} WHERE id = ?`).get(n) as { owner_id: number } | null;
+  if (!row || row.owner_id !== p.owner) throw new HttpError(404, "Das gibt es nicht (mehr).");
+  together.storeSpeech(ref, n, await body(c.req, 16 << 20));
+  return J({ ok: true });
+});
 route("GET", "/api/index/vocab", c => { scope(c.p, "index"); return J({ have: search.hasVocab(c.url.searchParams.get("model") ?? "") }); });
 route("POST", "/api/index/vocab", async c => {
   const p = scope(c.p, "index"); const b = await body(c.req, 8 << 20);
   const n = search.storeVocab(String(b.model), Array.isArray(b.labels) ? b.labels : []);
-  void search.relabelAll(); void p;
+  void search.relabelAll().then(() => docvec.relabelDocs()); void p;
   return J({ ok: true, stored: n });
 });
 route("POST", "/api/index/(\\d+)", async c => {
@@ -408,7 +452,9 @@ if (import.meta.main) {
   { const k = placeVideos(); if (k) console.log(`places: ${k} videos without GPS took the place of a photo or video next to them`); }
   // the photo sweep first, then the files still waiting to be rendered
   sweep().then(k => k && console.log(`sweep: finished ${k} unfinished items`)).finally(kickOcr)
-    .finally(() => docs.sweepDocs().then(k => k && console.log(`sweep: rendered ${k} pending files`)).catch(e => console.error("sweep docs:", e)));
+    .finally(() => docs.sweepDocs().then(k => k && console.log(`sweep: rendered ${k} pending files`)).catch(e => console.error("sweep docs:", e))
+      .finally(() => together.sweepTogether().then(r => (r.dated || r.reindexed) && console.log(`together: dated ${r.dated} files, reindexed ${r.reindexed}, ${r.stacks} stacks`)).catch(e => console.error("sweep together:", e))));
+  setInterval(() => void together.relinkAll().catch(e => console.error("relink:", e)), 6 * 3600_000).unref();
   lib.purge();
   setInterval(() => lib.purge(), 6 * 3600_000).unref();
   zoom.evict(); setInterval(() => zoom.evict(), 6 * 3600_000).unref();

@@ -185,6 +185,29 @@ final class Api: @unchecked Sendable {
         return tmp
     }
 
+    // MARK: Speech
+
+    func speechPending(limit: Int = 10) async throws -> [SpeechPending] {
+        let (d, h) = try await send(request("GET", "/api/index/speech/pending", query: [URLQueryItem(name: "limit", value: "\(limit)")]))
+        try check(d, h)
+        return SpeechWire.parsePending(d)
+    }
+
+    func postSpeech(ref: String, id: Int, body: [String: Any]) async throws {
+        let (d, h) = try await send(request("POST", "/api/index/speech/\(ref)/\(id)", json: body))
+        try check(d, h)
+    }
+
+    /// Streams /media/doc/:id/play (an audio file) to a temporary file and returns its URL.
+    func downloadDocAudio(id: Int) async throws -> URL {
+        let (tmp, resp) = try await session.download(for: request("GET", "/media/doc/\(id)/play"))
+        guard let h = resp as? HTTPURLResponse, (200..<300).contains(h.statusCode) else {
+            try? FileManager.default.removeItem(at: tmp)
+            throw ApiError(status: (resp as? HTTPURLResponse)?.statusCode ?? 0, message: "download failed")
+        }
+        return tmp
+    }
+
     func exportList(after: Int) async throws -> [ExportEntry] {
         let (d, h) = try await send(request("GET", "/api/export/list", query: [URLQueryItem(name: "after", value: "\(after)")]))
         try check(d, h)

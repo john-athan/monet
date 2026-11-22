@@ -5,9 +5,10 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { db } from "./db";
 import { CsvReader, decodeText, detectDelimiter, sheetSvg, SHEET_MAX_COLS, SHEET_MAX_ROWS, splitName, TEXT_FORMATS, zipRead, type DocType, type ZipEntry } from "./docsniff";
 import { bookText, entryMap, parseBook, withSource } from "./epub";
+import { titleWords } from "./chunks";
 import { DATA, enqueue, ORIGINALS } from "./ingest";
 import { HttpError, json, localDay, now, run, runText } from "./util";
-import type { BookOut, DocDetail, DocKind, DocList, DocSummary, SheetRows } from "../shared/types";
+import type { BookOut, DocDetail, DocKind, DocList, DocSummary, SheetRows, Transcript } from "../shared/types";
 
 const VIPS_ENV = { VIPS_CONCURRENCY: "1" };
 const FAILED = "Diese Datei konnte nicht aufbereitet werden.";
@@ -35,9 +36,13 @@ function place(from: string, to: string) {
 }
 
 /* ---------- rows ---------- */
-export const COLS_DOC_SUMMARY = "d.id, d.owner_id, d.kind, d.format, d.title, d.bytes, d.pages, d.width, d.height, d.modified_at, d.state, d.folder_id, d.by_name, d.album, d.track, d.duration_ms, d.is_text";
+export const COLS_DOC_SUMMARY = `d.id, d.owner_id, d.kind, d.format, d.title, d.bytes, d.pages, d.width, d.height, d.modified_at, d.state, d.folder_id, d.by_name, d.album, d.track, d.duration_ms, d.is_text,
+  d.taken_at, d.stack_id, d.stack_rank, (SELECT count(*) FROM doc b WHERE b.stack_id = d.stack_id AND b.deleted_at IS NULL) AS stack_n`;
+/** What lists and the timeline show of a stack: its top file only (docs/together.md, "Stacks"). */
+export const DOC_TOP = "(d.stack_rank IS NULL OR d.stack_rank = 1)";
 export function summary(r: any, viewer?: number): DocSummary {
-  const s: DocSummary = { id: r.id, kind: r.kind, title: r.title, format: r.format, bytes: r.bytes, pages: r.pages, w: r.width, h: r.height, modifiedAt: r.modified_at, state: r.state, folderId: r.folder_id };
+  const s: DocSummary = { id: r.id, kind: r.kind, title: r.title, format: r.format, bytes: r.bytes, pages: r.pages, w: r.width, h: r.height, modifiedAt: r.modified_at, takenAt: r.taken_at ?? r.modified_at, state: r.state, folderId: r.folder_id };
+  if (r.stack_id != null && r.stack_rank === 1 && r.stack_n > 1) s.stack = { count: r.stack_n };
   if (r.by_name) s.by = r.by_name;
   if (r.album) s.album = r.album;
   if (r.track != null) s.track = r.track;
@@ -67,7 +72,16 @@ export function detail(id: number): DocDetail | null {
   const r = rowById(id);
   if (!r) return null;
   return { ...summary(r) as Omit<DocSummary, "owner">, owner: r.owner_id, sha256: r.sha256, mime: r.mime, origName: r.orig_name, uploadedAt: r.uploaded_at, error: r.error,
-    path: folderPath(r.owner_id, r.folder_id), sheets: json<{ name: string; rows: number; cols: number; truncated: boolean }[]>(r.sheets, []), deletedAt: r.deleted_at };
+    path: folderPath(r.owner_id, r.folder_id), sheets: json<{ name: string; rows: number; cols: number; truncated: boolean }[]>(r.sheets, []), deletedAt: r.deleted_at,
+    transcript: transcriptRow("doc", id),
+    labels: (db.query("SELECT label FROM doc_label WHERE doc_id = ? ORDER BY score DESC").all(id) as { label: string }[]).map(x => x.label),
+    links: db.query(`SELECT l.kind, l.ref_id AS id, coalesce(p.name, pl.name) AS name FROM doc_link l LEFT JOIN person p ON l.kind = 'person' AND p.id = l.ref_id
+      LEFT JOIN place pl ON l.kind = 'place' AND pl.id = l.ref_id WHERE l.doc_id = ? ORDER BY l.kind, name`).all(id) as { kind: "person" | "place"; id: number; name: string }[] };
+}
+/** The transcript of a video (`item`) or a recording (`doc`), or null while there is none. */
+export function transcriptRow(ref: "item" | "doc", id: number): Transcript | null {
+  const t = db.query("SELECT lang, segments FROM transcript WHERE ref = ? AND ref_id = ?").get(ref, id) as { lang: string | null; segments: string } | null;
+  return t ? { lang: t.lang, segments: json<Transcript["segments"]>(t.segments, []) } : null;
 }
 
 /* ---------- list and search ---------- */
@@ -96,6 +110,7 @@ export function list(owner: number, q: ListQuery): DocList {
     const more = rows.length > limit;
     return { docs: rows.slice(0, limit).map(r => summary(r)), next: more ? `o${o + limit}` : null };
   }
+  where.push(DOC_TOP);
   const c = /^(\d+):(\d+)$/.exec(q.cursor ?? "");
   if (q.cursor && !c) throw new HttpError(400, "Ungültiger Cursor.");
   if (c) { where.push("(d.modified_at, d.id) < (?, ?)"); args.push(Number(c[1]), Number(c[2])); }
@@ -103,26 +118,28 @@ export function list(owner: number, q: ListQuery): DocList {
   const more = rows.length > limit, page = rows.slice(0, limit);
   return { docs: page.map(r => summary(r)), next: more ? `${page[page.length - 1].modified_at}:${page[page.length - 1].id}` : null };
 }
-/** Up to 12 files of the given libraries whose title or text match the words. Files of another library than `viewer`'s carry their owner. */
-export function searchDocs(owners: number[], words: string, viewer: number): DocSummary[] {
-  const m = ftsMatch(words);
-  if (!m) return [];
-  return (db.query(`SELECT ${COLS_DOC_SUMMARY} FROM doc_fts JOIN doc d ON d.id = doc_fts.rowid WHERE doc_fts MATCH ? AND d.owner_id IN ${ids(owners)} AND d.deleted_at IS NULL ORDER BY rank, d.modified_at DESC LIMIT 12`)
-    .all(m, ...owners) as any[]).map(r => summary(r, viewer));
-}
-
 /* ---------- small writes ---------- */
-function indexRow(id: number, title: string, text: string | null) {
+/** The full-text row of one file: title, text, labels (docs/together.md), and the rest: the transcript and the people and
+ *  places it names. Rebuilt whenever one of them changes. */
+export function reindexDoc(id: number) {
   db.query("DELETE FROM doc_fts WHERE rowid = ?").run(id);
-  db.query("INSERT INTO doc_fts (rowid, title, text) VALUES (?, ?, ?)").run(id, title, text ?? "");
+  const d = db.query("SELECT title, text FROM doc WHERE id = ?").get(id) as { title: string; text: string | null } | null;
+  if (!d) return;
+  const labels = (db.query("SELECT label FROM doc_label WHERE doc_id = ? ORDER BY score DESC").all(id) as { label: string }[]).map(r => r.label).join(" ");
+  const spoken = (db.query("SELECT text FROM transcript WHERE ref = 'doc' AND ref_id = ?").get(id) as { text: string } | null)?.text ?? "";
+  const named = (db.query(`SELECT coalesce(p.name, pl.name) AS name FROM doc_link l LEFT JOIN person p ON l.kind = 'person' AND p.id = l.ref_id
+    LEFT JOIN place pl ON l.kind = 'place' AND pl.id = l.ref_id WHERE l.doc_id = ?`).all(id) as { name: string | null }[]).map(r => r.name).filter(Boolean).join(" ");
+  db.query("INSERT INTO doc_fts (rowid, title, text, labels, extra) VALUES (?, ?, ?, ?, ?)").run(id, titleWords(d.title), d.text ?? "", labels, `${spoken} ${named}`.trim());
 }
+/** Called with the id of every file that was rendered (server/together.ts hangs its steps here: date, stack, links, vectors). */
+export const rendered: ((id: number) => void | Promise<void>)[] = [];
 export function rename(owner: number, id: number, title: unknown): DocSummary {
   const t = String(title ?? "").replace(/[\r\n\t]+/g, " ").trim();
   if (!t) throw new HttpError(400, "Der Titel fehlt.");
   if (t.length > 200) throw new HttpError(400, "Der Titel ist zu lang (höchstens 200 Zeichen).");
   const r = db.query("UPDATE doc SET title = ? WHERE id = ? AND owner_id = ? RETURNING text").get(t, id, owner) as { text: string | null } | null;
   if (!r) throw new HttpError(404, "Das gibt es nicht (mehr).");
-  indexRow(id, t, r.text);
+  reindexDoc(id);
   return summaryById(owner, id)!;
 }
 export function softDelete(owner: number, id: number, restore = false) {
@@ -139,6 +156,7 @@ export function purgeDocs(olderThanMs = 30 * 86400_000): number {
       for (const f of names) if (f.startsWith(r.sha256 + ".") || f.startsWith(r.sha256 + "-")) rmSync(join(derivedDir(r.sha256), f), { force: true });
     }
     db.query("DELETE FROM doc_fts WHERE rowid = ?").run(r.id);
+    db.query("DELETE FROM transcript WHERE ref = 'doc' AND ref_id = ?").run(r.id);
     db.query("DELETE FROM doc WHERE id = ?").run(r.id);
   }
   return rows.length;
@@ -169,8 +187,8 @@ export function ingestDoc(i: DocIn): { id: number; duplicate: boolean } {
   const row = db.query(`INSERT INTO doc (owner_id, sha256, kind, format, mime, bytes, title, orig_name, folder_id, modified_at, uploaded_at, source, device_id, orig_path, state, is_text, text)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
     .get(i.owner, i.sha, i.type.kind, i.type.format, i.type.mime, i.bytes, title, name, i.folderId ?? null, modified, uploadedAt, i.source, i.deviceId, rel, other ? "ok" : "pending", isText ? 1 : 0, text) as { id: number };
-  indexRow(row.id, title, text);
-  if (!other) queueRender(row.id);
+  reindexDoc(row.id);
+  if (!other) queueRender(row.id); else void afterRender(row.id);
   return { id: row.id, duplicate: false };
 }
 
@@ -231,11 +249,15 @@ export async function renderDoc(id: number) {
       title = CASE WHEN ? IS NOT NULL AND title = ? THEN ? ELSE title END WHERE id = ?`)
       .run(r.kind, r.pages, r.w, r.h, r.text, r.sheets, r.by ?? null, r.album ?? null, r.track ?? null, r.durationMs ?? null, r.book ?? null, tag, named, tag, id);
     // the title is read again: a rename while the file was being rendered must not be undone in the search index
-    indexRow(id, (db.query("SELECT title FROM doc WHERE id = ?").get(id) as { title: string }).title, r.text);
+    reindexDoc(id);
   } catch (e) {
     console.error(`render doc ${id} (${d.title}.${d.format}):`, (e as Error).message);
     db.query("UPDATE doc SET state = 'failed', error = ? WHERE id = ?").run(FAILED, id);
   } finally { rmSync(work, { recursive: true, force: true }); }
+  await afterRender(id);
+}
+async function afterRender(id: number) {
+  for (const f of rendered) { try { await f(id); } catch (e) { console.error(`after render of doc ${id}:`, (e as Error).message); } }
 }
 
 async function renderPages(d: Row, work: string): Promise<Rendered> {

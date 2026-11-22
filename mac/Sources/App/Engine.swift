@@ -34,6 +34,8 @@ final class Engine: ObservableObject {
     private let pauseBox = PauseBox()
     private let ocrKick = Flag()
     private var ocrTask: Task<Void, Never>?
+    private let speechKick = Flag()
+    private var speechTask: Task<Void, Never>?
     private var syncRunner: Task<Void, Never>?
     private var syncDirty = false
     private var tick: Timer?
@@ -101,6 +103,7 @@ final class Engine: ObservableObject {
         rewatch()
         if config.photosEnabled && PhotosSource.allowed { photos.startObserving(); photosCount = PhotosSource.assetCount() }
         startOcrLoop(api: a, store: st, gate: gate)
+        startSpeechLoop(api: a, gate: gate)
         indexer.start(api: a)
         scheduleArchive()
         nextStatusAt = .distantPast
@@ -111,6 +114,7 @@ final class Engine: ObservableObject {
 
     private func stopServices() {
         ocrTask?.cancel(); ocrTask = nil
+        speechTask?.cancel(); speechTask = nil
         syncRunner?.cancel(); syncRunner = nil
         watcher?.stop(); watcher = nil
         photos.stopObserving()
@@ -124,7 +128,7 @@ final class Engine: ObservableObject {
         refreshStyle()
         let before = pauseBox.value
         updatePause()
-        if before != nil && pauseBox.value == nil { requestSync(); ocrKick.set() }
+        if before != nil && pauseBox.value == nil { requestSync(); kickWorkers() }
         if Date() >= nextArchiveAt && !archiveBusy, let root = config.archivePath, ArchiveCopier.isAvailable(root: URL(fileURLWithPath: root)) {
             archiveNow()
         }
@@ -253,7 +257,7 @@ final class Engine: ObservableObject {
             photosCount = PhotosSource.assetCount()
         }
         syncFailed = failed > 0
-        ocrKick.set()
+        kickWorkers()
         rebuild()
     }
 
@@ -266,7 +270,7 @@ final class Engine: ObservableObject {
                 if upDone >= upQueued { upQueued = 0; upDone = 0 }
                 upQueued += n
             case .started(let n): upName = n
-            case .finished: upDone += 1; if upDone >= upQueued { upName = nil; ocrKick.set() }
+            case .finished: upDone += 1; if upDone >= upQueued { upName = nil; kickWorkers() }
             }
         case .scanned(let s): scanning.remove(s)
         }
@@ -283,6 +287,24 @@ final class Engine: ObservableObject {
             while !Task.isCancelled {
                 if await worker.runOnce() > 0 { continue }
                 for _ in 0..<60 {
+                    if Task.isCancelled || kick.take() { break }
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                }
+            }
+        }
+    }
+
+    private func kickWorkers() { ocrKick.set(); speechKick.set() }
+
+    /// Speech to text for videos and audio files, same shape as the OCR loop; polls every three minutes when idle.
+    private func startSpeechLoop(api: Api, gate: RunGate) {
+        speechTask?.cancel()
+        let worker = SpeechWorker(api: api, gate: gate)
+        let kick = speechKick
+        speechTask = Task.detached(priority: .utility) {
+            while !Task.isCancelled {
+                if await worker.runOnce() > 0 { continue }
+                for _ in 0..<360 {
                     if Task.isCancelled || kick.take() { break }
                     try? await Task.sleep(nanoseconds: 500_000_000)
                 }
@@ -340,7 +362,7 @@ final class Engine: ObservableObject {
 
     // MARK: Pause, open
 
-    func togglePause() { config.paused.toggle(); save(); updatePause(); if !config.paused { requestSync(); ocrKick.set() }; rebuild() }
+    func togglePause() { config.paused.toggle(); save(); updatePause(); if !config.paused { requestSync(); kickWorkers() }; rebuild() }
 
     func openMonet() { if let u = serverURL { NSWorkspace.shared.open(u) } }
 

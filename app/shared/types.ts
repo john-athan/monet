@@ -32,6 +32,8 @@ export interface ItemDetail extends Omit<ItemSummary, "burst" | "owner"> {
   burst: { id: number }[];
   labels: { label: string; score: number }[];
   ocr: string | null;
+  /** what is said in a video, once the Mac has transcribed it (docs/together.md) */
+  transcript: Transcript | null;
   backup: { original: true; secondCopyAt: number | null };
   deletedAt: number | null;
 }
@@ -47,6 +49,8 @@ export interface TimelineDay {
   /** the same hue for the night theme, 4.5:1 on #1C2049 */
   signNight: string;
   items: ItemSummary[];
+  /** the files of the day by their own date (docs/together.md); one per stack, its top */
+  docs: DocSummary[];
 }
 export interface Timeline { days: TimelineDay[]; next: string | null }
 export interface Band { months: { ym: string; n: number; colors: string[] }[] }
@@ -69,7 +73,7 @@ export interface SearchIn { chips: Chip[]; vec?: string; sort?: "best" | "date";
 export interface SearchOut { total: number; items: ItemSummary[]; relaxed: { label: string; count: number } | null; /** files whose title or text match the words (docs/files.md) */ docs: DocSummary[] }
 
 /** What the image model recognised: one label, how many shown photos carry it, and the photo that carries it most clearly. */
-export interface ThingOut { label: string; count: number; item: number }
+export interface ThingOut { label: string; count: number; item: number | null; /** files that carry the label (docs/together.md) */ docs: number; /** the file that carries it most clearly, when no photo does */ doc?: number }
 export interface PlaceOut { id: number; name: string; country: string; count: number; item: number; lat: number; lon: number; colors: string[] }
 /** Geotagged shown photos as parallel arrays. */
 export interface MapOut { ids: number[]; lat: number[]; lon: number[]; color: string[] }
@@ -125,6 +129,10 @@ export interface DocSummary {
   w: number; h: number;
   /** ms UTC: the file's own modification time as the client sent it, else the upload time */
   modifiedAt: number;
+  /** ms UTC: when the file was made, from its metadata, name or text (docs/together.md, "Dates"); modifiedAt until known */
+  takenAt: number;
+  /** present on the top file of a stack of near-identical files */
+  stack?: { count: number };
   state: DocState;
   folderId: number | null;
   /** set when the file belongs to another person than the library being looked at */
@@ -147,6 +155,11 @@ export interface DocDetail extends Omit<DocSummary, "owner"> {
   /** sheets only: name, number of rows and columns of every sheet, in order */
   sheets: { name: string; rows: number; cols: number; truncated: boolean }[];
   deletedAt: number | null;
+  /** audio: what is said, once transcribed */
+  transcript: Transcript | null;
+  labels: string[];
+  /** the named people and the places of the library this file mentions */
+  links: { kind: "person" | "place"; id: number; name: string }[];
 }
 export interface DocList { docs: DocSummary[]; next: string | null }
 /** a window of one sheet: rows[from .. from + rows.length), each row padded to the sheet's cols */
@@ -161,3 +174,10 @@ export interface FolderOut {
   items: ItemSummary[];
 }
 export interface MoveIn { into: number | null; docs?: number[]; items?: number[]; folders?: number[] }
+
+/* ---------- everything together (docs/together.md) ---------- */
+/** what is said in a recording or a video: segments with start and end in ms */
+export interface Transcript { lang: string | null; segments: { s: number; e: number; t: string }[] }
+/** a stretch of days away from home, or a big day at home, with the files that belong to it */
+export interface MomentSummary { key: string; title: string; subtitle: string; start: string; end: string; count: number; docs: number; cover: number[] }
+export interface MomentOut extends MomentSummary { items: ItemSummary[]; files: DocSummary[] }

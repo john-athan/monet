@@ -4,11 +4,11 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { db } from "./db";
 import { dayTitle, daySign, monthPalette } from "./calc";
-import { purgeDocs } from "./docs";
+import { COLS_DOC_SUMMARY, DOC_TOP, purgeDocs, summary as docSummary, transcriptRow } from "./docs";
 import { ORIGINALS, rankBurst, thumbPath } from "./ingest";
 import { countryName } from "./places";
 import { HttpError, json, now, todayBerlin } from "./util";
-import type { MapOut, AlbumDetail, AlbumOut, Band, ItemDetail, ItemSummary, PlaceOut, SeriesOut, ThingOut, Timeline, TimelineDay } from "../shared/types";
+import type { DocSummary, MapOut, AlbumDetail, AlbumOut, Band, ItemDetail, ItemSummary, PlaceOut, SeriesOut, ThingOut, Timeline, TimelineDay } from "../shared/types";
 import { chroma, hexToRgb } from "./calc";
 import { DATA } from "./ingest";
 
@@ -36,7 +36,7 @@ export function summariesByIds(owner: number, ids: number[]): ItemSummary[] {
 }
 
 /* ---------- timeline ---------- */
-export type TimelineQuery = { cursor?: string | null; from?: string | null; limit?: number; favorite?: boolean; album?: number | null };
+export type TimelineQuery = { cursor?: string | null; from?: string | null; limit?: number; favorite?: boolean; album?: number | null; /** false: photos and videos only */ files?: boolean };
 /** Days newest first. `limit` counts days. `next` is the last day returned when more follow, to pass back as `cursor`. */
 export function timeline(owner: number, q: TimelineQuery = {}): Timeline {
   const limit = Math.max(1, Math.min(60, Math.floor(q.limit ?? 24)));
@@ -47,12 +47,23 @@ export function timeline(owner: number, q: TimelineQuery = {}): Timeline {
   if (q.from && /^\d{4}-(0[1-9]|1[0-2])$/.test(q.from)) { where.push("i.day <= ?"); args.push(q.from + "-31"); }
   if (q.cursor && /^\d{4}-\d{2}-\d{2}$/.test(q.cursor)) { where.push("i.day < ?"); args.push(q.cursor); }
   const w = where.join(" AND ");
-  const days = (db.query(`SELECT DISTINCT i.day FROM item i WHERE ${w} ORDER BY i.day DESC LIMIT ?`).all(...args, limit + 1) as { day: string }[]).map(r => r.day);
+  // files stand on the days they were made (docs/together.md); favourites and albums hold photos only
+  const files = q.files !== false && !q.favorite && !q.album;
+  const dw = [`d.owner_id = ?`, "d.deleted_at IS NULL", "d.state != 'failed'", "d.day IS NOT NULL", DOC_TOP], dargs: any[] = [owner];
+  if (q.from && /^\d{4}-(0[1-9]|1[0-2])$/.test(q.from)) { dw.push("d.day <= ?"); dargs.push(q.from + "-31"); }
+  if (q.cursor && /^\d{4}-\d{2}-\d{2}$/.test(q.cursor)) { dw.push("d.day < ?"); dargs.push(q.cursor); }
+  const dws = dw.join(" AND ");
+  const days = (files
+    ? db.query(`SELECT day FROM (SELECT DISTINCT i.day AS day FROM item i WHERE ${w} UNION SELECT DISTINCT d.day FROM doc d WHERE ${dws}) ORDER BY day DESC LIMIT ?`).all(...args, ...dargs, limit + 1)
+    : db.query(`SELECT DISTINCT i.day FROM item i WHERE ${w} ORDER BY i.day DESC LIMIT ?`).all(...args, limit + 1) as { day: string }[]).map((r: any) => r.day as string);
   const more = days.length > limit;
   const shown = days.slice(0, limit);
   if (!shown.length) return { days: [], next: null };
   const rows = db.query(`SELECT ${SUM_COLS}, p.name AS place_name FROM item i LEFT JOIN place p ON p.id = i.place_id
     WHERE ${w} AND i.day BETWEEN ? AND ? ORDER BY i.taken_at DESC, i.id DESC`).all(...args, shown[shown.length - 1], shown[0]) as any[];
+  const docsByDay = new Map<string, DocSummary[]>();
+  if (files) for (const r of db.query(`SELECT ${COLS_DOC_SUMMARY}, d.day FROM doc d WHERE ${dws} AND d.day BETWEEN ? AND ? ORDER BY d.taken_at DESC, d.id DESC`).all(...dargs, shown[shown.length - 1], shown[0]) as any[])
+    (docsByDay.get(r.day) ?? docsByDay.set(r.day, []).get(r.day)!).push(docSummary(r));
   const today = todayBerlin();
   const byDay = new Map<string, any[]>();
   for (const r of rows) (byDay.get(r.day) ?? byDay.set(r.day, []).get(r.day)!).push(r);
@@ -62,7 +73,7 @@ export function timeline(owner: number, q: TimelineQuery = {}): Timeline {
     for (const r of rs) if (r.place_name) places.set(r.place_name, (places.get(r.place_name) ?? 0) + 1);
     const place = [...places.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     const sign = daySign(rs.flatMap(r => json<string[]>(r.colors, [])));
-    return { date, title: dayTitle(date, today), place, ...sign, items: rs.map(summary) };
+    return { date, title: dayTitle(date, today), place, ...sign, items: rs.map(summary), docs: docsByDay.get(date) ?? [] };
   });
   return { days: out, next: more ? shown[shown.length - 1] : null };
 }
@@ -78,6 +89,8 @@ export function band(owner: number): Band {
     if (Array.isArray(cs)) for (const c of cs) { if (typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c)) m.pool.push(c); }
     else if (r.color) m.pool.push(r.color);
   }
+  for (const r of db.query(`SELECT substr(d.day, 1, 7) AS ym, count(*) AS n FROM doc d WHERE d.owner_id = ? AND d.deleted_at IS NULL AND d.state != 'failed' AND d.day IS NOT NULL AND ${DOC_TOP} GROUP BY ym`).all(owner) as { ym: string; n: number }[])
+    (by.get(r.ym) ?? by.set(r.ym, { n: 0, pool: [] }).get(r.ym)!).n += r.n;
   const months = [...by.entries()].sort((a, b) => b[0].localeCompare(a[0]))
     .map(([ym, m]) => ({ ym, n: m.n, colors: m.pool.length ? monthPalette(m.pool) : [] }));
   return { months };
@@ -97,7 +110,7 @@ export function detail(owner: number, id: number): ItemDetail | null {
     place: r.p_name ? { name: r.p_name, admin1: r.p_admin1, country: countryName(r.p_country) } : null,
     faces, burst: burst.length > 1 ? burst : [],
     labels: db.query("SELECT label, score FROM item_label WHERE item_id = ? ORDER BY score DESC").all(id) as { label: string; score: number }[],
-    ocr: r.ocr_text, backup: { original: true, secondCopyAt: r.second_copy_at }, deletedAt: r.deleted_at,
+    ocr: r.ocr_text, transcript: transcriptRow("item", id), backup: { original: true, secondCopyAt: r.second_copy_at }, deletedAt: r.deleted_at,
   };
 }
 
@@ -122,6 +135,7 @@ export function purge(olderThanMs = 30 * 86400_000) {
     for (const s of ["s", "m", "l"] as const) rmSync(thumbPath(r.sha256, s), { force: true });
     for (const f of db.query("SELECT id FROM face WHERE item_id = ?").all(r.id) as { id: number }[]) rmSync(join(DATA, "faces", `${f.id}.webp`), { force: true });
     db.query("DELETE FROM item_fts WHERE rowid = ?").run(r.id);
+    db.query("DELETE FROM transcript WHERE ref = 'item' AND ref_id = ?").run(r.id);
     db.query("DELETE FROM item WHERE id = ?").run(r.id);
   }
   purgeDocs(olderThanMs); // files too, with what was made from them
@@ -159,7 +173,13 @@ export function series(owner: number): SeriesOut[] {
 export function things(owner: number): ThingOut[] {
   const rows = db.query(`SELECT l.label, count(*) AS n, (SELECT j.id FROM item_label k JOIN item j ON j.id = k.item_id WHERE k.label = l.label AND j.owner_id = ? AND ${SHOWN.replaceAll("i.", "j.")} ORDER BY k.score DESC, j.taken_at DESC LIMIT 1) AS item
     FROM item_label l JOIN item i ON i.id = l.item_id WHERE i.owner_id = ? AND ${SHOWN} GROUP BY l.label ORDER BY n DESC, l.label`).all(owner, owner) as { label: string; n: number; item: number }[];
-  return rows.map(r => ({ label: r.label, count: r.n, item: r.item }));
+  // files carry labels too (what their pages show, docs/together.md): a label only files have still gets its card
+  const files = db.query(`SELECT l.label, count(*) AS n, (SELECT k.doc_id FROM doc_label k JOIN doc e ON e.id = k.doc_id WHERE k.label = l.label AND e.owner_id = ? AND e.deleted_at IS NULL ORDER BY k.score DESC LIMIT 1) AS doc
+    FROM doc_label l JOIN doc d ON d.id = l.doc_id WHERE d.owner_id = ? AND d.deleted_at IS NULL GROUP BY l.label`).all(owner, owner) as { label: string; n: number; doc: number }[];
+  const byLabel = new Map(files.map(f => [f.label, f]));
+  const out: ThingOut[] = rows.map(r => ({ label: r.label, count: r.n, item: r.item, docs: byLabel.get(r.label)?.n ?? 0 }));
+  for (const f of files) if (!rows.some(r => r.label === f.label)) out.push({ label: f.label, count: 0, item: null, docs: f.n, doc: f.doc });
+  return out.sort((a, b) => b.count + b.docs - (a.count + a.docs) || a.label.localeCompare(b.label));
 }
 
 export function places(owner: number): PlaceOut[] {

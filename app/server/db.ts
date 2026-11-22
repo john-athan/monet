@@ -109,6 +109,30 @@ const MIGRATIONS: string[] = [
    CREATE INDEX doc_kind ON doc(owner_id, kind, modified_at);
    CREATE INDEX doc_folder ON doc(folder_id) WHERE folder_id IS NOT NULL;
    CREATE INDEX doc_pending ON doc(state) WHERE state = 'pending';`,
+  // everything together (docs/together.md): a file's own date and day for the timeline, stacks of near-identical
+  // files, vectors of pages and text pieces, transcripts of audio and video, labels and the people and places a file
+  // names. doc_fts gains the labels and the transcript, so it is built again (server/together.ts refills it at start).
+  `ALTER TABLE doc ADD COLUMN taken_at INTEGER;
+   ALTER TABLE doc ADD COLUMN taken_src TEXT;
+   ALTER TABLE doc ADD COLUMN day TEXT;
+   ALTER TABLE doc ADD COLUMN stack_id INTEGER;
+   ALTER TABLE doc ADD COLUMN stack_rank INTEGER;
+   ALTER TABLE doc ADD COLUMN unstacked INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE doc ADD COLUMN vec_ok INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE doc ADD COLUMN speech_ok INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE item ADD COLUMN speech_ok INTEGER NOT NULL DEFAULT 0;
+   CREATE INDEX doc_day ON doc(owner_id, day);
+   CREATE INDEX doc_stack ON doc(stack_id) WHERE stack_id IS NOT NULL;
+   CREATE TABLE doc_vec (doc_id INTEGER NOT NULL REFERENCES doc(id) ON DELETE CASCADE, seq INTEGER NOT NULL,
+     kind TEXT NOT NULL CHECK (kind IN ('page','text')), model TEXT NOT NULL, vec BLOB NOT NULL, PRIMARY KEY (doc_id, seq)) STRICT;
+   CREATE TABLE transcript (ref TEXT NOT NULL CHECK (ref IN ('item','doc')), ref_id INTEGER NOT NULL, model TEXT NOT NULL, lang TEXT,
+     segments TEXT NOT NULL, text TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (ref, ref_id)) STRICT;
+   CREATE TABLE doc_label (doc_id INTEGER NOT NULL REFERENCES doc(id) ON DELETE CASCADE, label TEXT NOT NULL, score REAL NOT NULL, PRIMARY KEY (doc_id, label)) STRICT;
+   CREATE TABLE doc_link (doc_id INTEGER NOT NULL REFERENCES doc(id) ON DELETE CASCADE, kind TEXT NOT NULL CHECK (kind IN ('person','place')),
+     ref_id INTEGER NOT NULL, PRIMARY KEY (doc_id, kind, ref_id)) STRICT;
+   CREATE INDEX doc_link_ref ON doc_link(kind, ref_id);
+   DROP TABLE doc_fts;
+   CREATE VIRTUAL TABLE doc_fts USING fts5(title, text, labels, extra, tokenize='unicode61 remove_diacritics 2');`,
 ];
 
 const version = (db.query("PRAGMA user_version").get() as { user_version: number }).user_version;

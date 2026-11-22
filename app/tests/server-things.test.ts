@@ -33,9 +33,9 @@ describe("things", () => {
   test("GET /api/things: labels of shown photos of this owner, most common first, cover is the best share", async () => {
     const t = await j(await srv.fetch("/api/things", { cookie }));
     expect(t.map((x: any) => x.label)).toEqual(["Hafen", "Höhle", "Kaffee"]);
-    expect(t[0]).toEqual({ label: "Hafen", count: 2, item: b });
+    expect(t[0]).toEqual({ label: "Hafen", count: 2, item: b, docs: 0 });
     expect(t[1].count).toBe(1);
-    expect(t[2]).toEqual({ label: "Kaffee", count: 1, item: a });
+    expect(t[2]).toEqual({ label: "Kaffee", count: 1, item: a, docs: 0 });
   });
   test("a device token is refused, no session is 401", async () => {
     const dev = await pairDevice(srv, cookie);

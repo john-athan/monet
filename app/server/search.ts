@@ -2,12 +2,13 @@
 // Also owns the in-memory matrix of image vectors and the label scoring, since both read the same vectors.
 // The vectors come from SigLIP 2 B/32 (docs/ml.md); the table and fields keep their older name "clip".
 import { db } from "./db";
-import { searchDocs } from "./docs";
+import { COLS_DOC_SUMMARY, DOC_TOP, ftsMatch, summary as docSummary } from "./docs";
+import { semanticDocs } from "./docvec";
 import { reindexFts } from "./fts";
 import { parseQuery, SEASON_MONTHS, type ParseCtx } from "./parse";
 import { SHOWN, SUM_COLS, summary } from "./library";
 import { blobVec, decodeVec, dot, HttpError, vecBlob } from "./util";
-import type { Chip, IndexIn, ItemSummary, ParseOut, SearchIn, SearchOut } from "../shared/types";
+import type { Chip, DocSummary, IndexIn, ItemSummary, ParseOut, SearchIn, SearchOut } from "../shared/types";
 
 export const CLIP_MODEL = "siglip2-b32-256";
 export const DIM = 768;
@@ -81,19 +82,48 @@ export function storeVocab(model: string, labels: { label: string; lang: string;
       n++;
     }
   })();
-  vocab = undefined;
+  vocab = undefined; vmean = undefined;
   return n;
 }
-/** At most LABEL_TOP labels whose softmax share reaches LABEL_SHARE, stored in item_label. */
-export function scoreLabels(itemId: number, v: Float32Array) {
+/** The softmax share of every label for a vector (see LABEL_SHARE); null without a vocabulary. */
+export function labelShares(v: Float32Array): Map<string, number> | null {
   const voc = vocabFor(CLIP_MODEL);
-  if (!voc) return false;
+  if (!voc) return null;
   const raw = voc.labels.map((label, i) => ({ label, cos: dot(v, voc.m, i * DIM) }));
   const max = Math.max(...raw.map(x => x.cos));
   const e = raw.map(x => Math.exp(LABEL_TEMP * (x.cos - max))), z = e.reduce((a, b) => a + b, 0);
   // a label may exist twice (German and English twin): its shares add up
   const share = new Map<string, number>();
   raw.forEach((x, i) => share.set(x.label, (share.get(x.label) ?? 0) + e[i] / z));
+  return share;
+}
+/** The mean of the label prompts' vectors: what a text query looks like on average (docvec.ts centres queries on it). */
+let vmean: Float32Array | null | undefined;
+export function vocabMean(): Float32Array | null {
+  if (vmean !== undefined) return vmean;
+  const voc = vocabFor(CLIP_MODEL);
+  if (!voc) return null;
+  const n = voc.labels.length, m = new Float32Array(DIM);
+  for (let i = 0; i < n; i++) for (let k = 0; k < DIM; k++) m[k] += voc.m[i * DIM + k] / n;
+  return (vmean = m);
+}
+/* A query that is close to a label stands for it: "house" is "Haus", "wohnung" is mostly "Wohnung" and a little "Haus".
+ * Text against the label prompts is sharp (measured 2026-11-22: haus 96 % Haus, rechnung 85 % Rechnung, reise 97 % Reise,
+ * universität 99 %), and flat where no label fits (miete: 20 % at best, vertrag 29 %). So a query is expanded only when
+ * its best label takes EXPAND_TOP, and then by every label taking EXPAND_SHARE, at most three. */
+export const EXPAND_TOP = 0.5;
+export const EXPAND_SHARE = 0.1;
+export function expandQuery(vec: Float32Array): string[] {
+  const sh = labelShares(vec);
+  if (!sh) return [];
+  const top = [...sh].sort((a, b) => b[1] - a[1]);
+  if (!top.length || top[0][1] < EXPAND_TOP) return [];
+  return top.filter(([, s]) => s >= EXPAND_SHARE).slice(0, 3).map(([l]) => l);
+}
+/** At most LABEL_TOP labels whose softmax share reaches LABEL_SHARE, stored in item_label. */
+export function scoreLabels(itemId: number, v: Float32Array) {
+  const share = labelShares(v);
+  if (!share) return false;
   const top = [...share].map(([label, score]) => ({ label, score })).filter(x => x.score >= LABEL_SHARE).sort((a, b) => b.score - a.score).slice(0, LABEL_TOP);
   db.transaction(() => {
     db.query("DELETE FROM item_label WHERE item_id = ?").run(itemId);
@@ -153,6 +183,50 @@ function chipSql(c: Chip, args: any[]): string | null {
   if (k === "r" && r) { args.push(r[1], r[2]); return "substr(i.day, 6, 5) BETWEEN ? AND ?"; }
   return null;
 }
+/** The same chips for files: dates on the file's own day, people and places by what the file names (doc_link). */
+function docChipSql(c: Chip, args: any[]): string | null {
+  if (c.kind === "person" || c.kind === "place") { args.push(c.kind, +c.value); return "EXISTS (SELECT 1 FROM doc_link l WHERE l.doc_id = d.id AND l.kind = ? AND l.ref_id = ?)"; }
+  const s = chipSql(c, args);
+  return s && s.replaceAll("i.day", "d.day");
+}
+export const DOC_HITS = 60;
+const RRF = 60;
+/** Files for a search: whatever matches the words (FTS over title, text, labels, transcript and names), the labels the
+ *  query stands for, and the vectors of pages and text pieces, fused by rank (reciprocal rank fusion: the three scores
+ *  live on different scales). Person, place and date chips filter. No words and no vector: the filter alone, newest first;
+ *  no chips at all: nothing. */
+export function findDocs(owners: number[], chips: Chip[], vec: Float32Array | null, viewer: number): DocSummary[] {
+  const args: any[] = [...owners], where = [`d.owner_id IN ${inOwners(owners)}`, "d.deleted_at IS NULL"];
+  let filtered = false;
+  for (const c of chips) { const s = docChipSql(c, args); if (s) { where.push(s); filtered = true; } }
+  const words = chips.filter(c => c.kind === "content" || c.kind === "text").map(c => c.value).join(" ");
+  const w = where.join(" AND ");
+  const rows = (sql: string, a: any[]) => db.query(sql).all(...a) as any[];
+  if (!words && !vec) {
+    if (!filtered) return [];
+    return rows(`SELECT ${COLS_DOC_SUMMARY} FROM doc d WHERE ${w} AND ${DOC_TOP} ORDER BY coalesce(d.taken_at, d.modified_at) DESC LIMIT ${DOC_HITS}`, args).map(r => docSummary(r, viewer));
+  }
+  const lists: number[][] = [];
+  const fts = (m: string | null) => m ? rows(`SELECT d.id FROM doc_fts JOIN doc d ON d.id = doc_fts.rowid WHERE doc_fts MATCH ? AND ${w} ORDER BY rank LIMIT 200`, [m, ...args]).map(r => r.id) : [];
+  lists.push(fts(ftsMatch(words)));
+  const extra = vec ? expandQuery(vec).filter(l => !new RegExp(`^${l}$`, "i").test(words.trim())) : [];
+  if (extra.length) lists.push(fts(extra.map(l => (l.match(/[\p{L}\p{N}]+/gu) ?? []).map(t => `"${t}"`).join(" ")).map(x => `(${x})`).join(" OR ")));
+  if (vec) {
+    const sem = semanticDocs(owners, vec);
+    if (sem.size) {
+      // only those the chips let through
+      const ok = new Set(rows(`SELECT d.id FROM doc d WHERE ${w} AND d.id IN (${[...sem.keys()].join(",")})`, args).map(r => r.id));
+      lists.push([...sem].filter(([id]) => ok.has(id)).sort((a, b) => b[1] - a[1]).map(([id]) => id));
+    }
+  }
+  const score = new Map<number, number>();
+  for (const l of lists) l.forEach((id, k) => score.set(id, (score.get(id) ?? 0) + 1 / (RRF + k)));
+  const ids = [...score].sort((a, b) => b[1] - a[1]).slice(0, DOC_HITS).map(([id]) => id);
+  if (!ids.length) return [];
+  const by = new Map(rows(`SELECT ${COLS_DOC_SUMMARY} FROM doc d WHERE d.id IN (${ids.join(",")})`, []).map(r => [r.id, docSummary(r, viewer)]));
+  return ids.flatMap(id => by.get(id) ?? []);
+}
+
 const ftsQuery = (words: string) => (words.match(/[\p{L}\p{N}]+/gu) ?? []).slice(0, 12).map(w => `"${w}"*`).join(" OR ");
 
 type Hit = { id: number; taken_at: number; owner_id: number };
@@ -211,9 +285,7 @@ export function search(owners: number | number[], b: SearchIn, viewer?: number):
   const sort = b.sort === "date" ? "date" : "best";
   const hits = rank(os, chips, vec, sort);
   const limit = Math.max(1, Math.min(1000, Math.floor(b.limit ?? 400))), offset = Math.max(0, Math.floor(b.offset ?? 0));
-  // files whose title or text match the words of the content and text chips (none without words)
-  const words = chips.filter(c => c.kind === "content" || c.kind === "text").map(c => c.value).join(" ");
-  const out: SearchOut = { total: hits.length, items: summaries(os, hits.slice(offset, offset + limit).map(h => h.id), view), relaxed: null, docs: searchDocs(os, words, view) };
+  const out: SearchOut = { total: hits.length, items: summaries(os, hits.slice(offset, offset + limit).map(h => h.id), view), relaxed: null, docs: offset ? [] : findDocs(os, chips, vec, view) };
 
   // relaxed: drop the most restrictive person (the one with the fewest photos on its own) and say what that would show
   const persons = chips.filter(c => c.kind === "person");
