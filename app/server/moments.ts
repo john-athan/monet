@@ -5,6 +5,7 @@
 // booking two months ahead, the invoice a week later). Computed on request: one pass over the library.
 import { db } from "./db";
 import { MONTHS } from "./calc";
+import { cityName } from "./places";
 import { COLS_DOC_SUMMARY, DOC_TOP, summary as docSummary } from "./docs";
 import { SHOWN, SUM_COLS, summary } from "./library";
 import type { MomentOut, MomentSummary } from "../shared/types";
@@ -39,7 +40,7 @@ type Row = { id: number; day: string; place_id: number | null; name: string | nu
 type Found = { start: string; end: string; title: string; places: number[]; ids: number[] };
 
 /** The moments of a library, oldest first. Pure apart from the label lookup it is given. */
-export function findMoments(rows: Row[], labelsOf: (ids: number[]) => Map<string, number>): Found[] {
+export function findMoments(rows: Row[], labelsOf: (ids: number[]) => Map<string, number>, nameOf: (id: number, name: string) => string = (_, n) => n): Found[] {
   // home: the place photographed on the most days
   const daysAt = new Map<number, Set<string>>(), where = new Map<number, Row>();
   for (const r of rows) if (r.place_id != null && r.lat != null) { (daysAt.get(r.place_id) ?? daysAt.set(r.place_id, new Set()).get(r.place_id)!).add(r.day); where.set(r.place_id, r); }
@@ -59,11 +60,14 @@ export function findMoments(rows: Row[], labelsOf: (ids: number[]) => Map<string
   const close = (run: string[]) => {
     const rs = run.flatMap(d => byDay.get(d)!);
     if (rs.length < MIN_AWAY) return;
-    const count = new Map<number, number>();
-    for (const r of rs) if (r.place_id != null && r.lat != null && km(r as any, homeAt as any) > AWAY_KM) count.set(r.place_id, (count.get(r.place_id) ?? 0) + 1);
-    const top = [...count].sort((a, b) => b[1] - a[1]);
-    const names = top.filter(([, n]) => n >= top[0][1] * 0.3).slice(0, 2).map(([p]) => where.get(p)!.name!);
-    out.push({ start: run[0], end: run[run.length - 1], title: [...new Set(names)].join(" und "), places: top.map(([p]) => p), ids: rs.map(r => r.id) });
+    const count = new Map<number, number>(), byName = new Map<string, number>();
+    for (const r of rs) if (r.place_id != null && r.lat != null && km(r as any, homeAt as any) > AWAY_KM) {
+      count.set(r.place_id, (count.get(r.place_id) ?? 0) + 1);
+      const n = nameOf(r.place_id, r.name!);
+      byName.set(n, (byName.get(n) ?? 0) + 1);
+    }
+    const top = [...count].sort((a, b) => b[1] - a[1]), names = [...byName].sort((a, b) => b[1] - a[1]);
+    out.push({ start: run[0], end: run[run.length - 1], title: names.filter(([, n]) => n >= names[0][1] * 0.3).slice(0, 2).map(([x]) => x).join(" und "), places: top.map(([p]) => p), ids: rs.map(r => r.id) });
   };
   let run: string[] = [];
   const inRun = new Set<string>();
@@ -95,7 +99,7 @@ function compute(owner: number): Found[] {
       for (const r of db.query(`SELECT label, count(*) AS n FROM item_label WHERE item_id IN (${part.map(() => "?").join(",")}) GROUP BY label`).all(...part) as { label: string; n: number }[]) m.set(r.label, (m.get(r.label) ?? 0) + r.n);
     }
     return m;
-  });
+  }, cityName);
 }
 
 function filesOf(owner: number, m: Found): number[] {

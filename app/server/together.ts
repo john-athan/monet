@@ -109,10 +109,16 @@ export function unstackDoc(owner: number, id: number) {
 /* ---------- people and places a file names ---------- */
 /* German nouns that are also towns: "das Essen", "die Halle". A file that says them names no place. */
 const COMMON = new Set(["essen", "halle", "hof", "zug", "weil", "lauf", "wald", "bad", "rain", "mark", "plan", "berg", "au", "ort", "stadt", "post", "buch", "kirchen", "werne", "lage", "senden", "selm", "kaarst", "brake", "leer", "olpe", "bergen", "baden", "worms"]);
+/* A place that a large part of a library names is a letterhead or an address ("ING-DiBa AG, Frankfurt am Main", the home
+ * town in every letter): it says nothing about the file. Measured on 2026-11-22: of 951 files, 422 named Frankfurt am
+ * Main and 639 München, the next most named place 29. A place named by more than COMMON_SHARE of an owner's files, and at
+ * least COMMON_MIN of them, is dropped from that owner's links (meta common_places_<owner>, renewed by relinkAll). */
+export const COMMON_SHARE = 0.1, COMMON_MIN = 20;
+const commonPlaces = (owner: number) => new Set<number>(JSON.parse(metaGet(`common_places_${owner}`) ?? "[]"));
 const wordRe = (name: string) => new RegExp(`(?<![\\p{L}\\p{N}])${fold(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "u");
 /** Which named people (of the file's owner) and which places (where the owner has photos) a file names in its title,
  *  text or transcript. People need a name of three letters or more, places four. */
-export function linkDoc(id: number) {
+export function linkDoc(id: number, raw = false) {
   const d = db.query("SELECT owner_id, title, text FROM doc WHERE id = ?").get(id) as { owner_id: number; title: string; text: string | null } | null;
   if (!d) return;
   const spoken = (db.query("SELECT text FROM transcript WHERE ref = 'doc' AND ref_id = ?").get(id) as { text: string } | null)?.text ?? "";
@@ -127,7 +133,8 @@ export function linkDoc(id: number) {
   };
   const links: ["person" | "place", number][] = [];
   for (const p of people) if (p.name.trim().length >= 3 && names(p.name)) links.push(["person", p.id]);
-  for (const p of places) if (p.name.length >= 4 && !COMMON.has(fold(p.name)) && names(p.name)) links.push(["place", p.id]);
+  const common = raw ? new Set<number>() : commonPlaces(d.owner_id);
+  for (const p of places) if (p.name.length >= 4 && !COMMON.has(fold(p.name)) && !common.has(p.id) && names(p.name)) links.push(["place", p.id]);
   db.transaction(() => {
     db.query("DELETE FROM doc_link WHERE doc_id = ?").run(id);
     for (const [k, r] of links) db.query("INSERT OR IGNORE INTO doc_link (doc_id, kind, ref_id) VALUES (?, ?, ?)").run(id, k, r);
@@ -205,10 +212,22 @@ export async function sweepTogether(): Promise<{ dated: number; reindexed: numbe
     metaSet("doc_fts", "2");
   }
   for (const o of db.query("SELECT id FROM owner").all() as { id: number }[]) stacks += restackDocs(o.id);
+  if (metaGet("link_rule") !== "1") { await relinkAll(); metaSet("link_rule", "1"); }
   return { dated, reindexed, stacks };
 }
-/** Links again for every file: names and places change (a person gets named, photos arrive from a new town). */
+/** Links again for every file: names and places change (a person gets named, photos arrive from a new town). All places
+ *  first, then the ones too many files name are dropped and remembered (COMMON_SHARE). */
 export async function relinkAll() {
   let k = 0;
-  for (const r of db.query("SELECT id FROM doc WHERE deleted_at IS NULL").all() as { id: number }[]) { linkDoc(r.id); if (++k % 50 === 0) await new Promise(res => setTimeout(res, 0)); }
+  for (const r of db.query("SELECT id FROM doc WHERE deleted_at IS NULL").all() as { id: number }[]) { linkDoc(r.id, true); if (++k % 50 === 0) await new Promise(res => setTimeout(res, 0)); }
+  for (const o of db.query("SELECT id FROM owner").all() as { id: number }[]) {
+    const total = (db.query("SELECT count(*) AS n FROM doc WHERE owner_id = ? AND deleted_at IS NULL").get(o.id) as { n: number }).n;
+    const common = (db.query(`SELECT l.ref_id FROM doc_link l JOIN doc d ON d.id = l.doc_id WHERE d.owner_id = ? AND l.kind = 'place' GROUP BY l.ref_id HAVING count(*) > ? AND count(*) >= ?`)
+      .all(o.id, total * COMMON_SHARE, COMMON_MIN) as { ref_id: number }[]).map(r => r.ref_id);
+    metaSet(`common_places_${o.id}`, JSON.stringify(common));
+    if (!common.length) continue;
+    const hit = db.query(`SELECT DISTINCT l.doc_id FROM doc_link l JOIN doc d ON d.id = l.doc_id WHERE d.owner_id = ? AND l.kind = 'place' AND l.ref_id IN (${common.join(",")})`).all(o.id) as { doc_id: number }[];
+    db.query(`DELETE FROM doc_link WHERE kind = 'place' AND ref_id IN (${common.join(",")}) AND doc_id IN (SELECT id FROM doc WHERE owner_id = ?)`).run(o.id);
+    for (const h of hit) reindexDoc(h.doc_id);
+  }
 }
