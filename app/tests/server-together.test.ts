@@ -6,6 +6,7 @@ import { chooseDocDate, isoDate, pdfInfoDate, textDate } from "../server/docdate
 import { findMoments, span } from "../server/moments";
 import { cleanSegments, overlap, planStacks, stem, wordSet } from "../server/together";
 import { pairDevice, seedSession, startServer, type Srv } from "./helpers";
+import { findOnPage, fromOcr, parseBbox } from "../server/doctext";
 
 const UP = Date.UTC(2026, 10, 22, 12);
 const day = (t: number) => new Date(t).toISOString().slice(0, 10);
@@ -106,6 +107,32 @@ describe("transcripts and moments", () => {
   });
 });
 
+describe("text on the page", () => {
+  const html = `<doc><page width="200.000000" height="100.000000"><flow><block><line xMin="10" yMin="20" xMax="110" yMax="30">
+    <word xMin="10" yMin="20" xMax="50" yMax="30">Straße</word><word xMin="60" yMin="20" xMax="110" yMax="30">&amp;Co</word></line>
+    <line xMin="10" yMin="40" xMax="90" yMax="50"><word xMin="10" yMin="40" xMax="90" yMax="50">Fußmatte</word></line></block></flow></page>
+    <page width="200.000000" height="100.000000"></page></doc>`;
+  test("pdftotext's boxes become fractions of the page, lines carry their words' text", () => {
+    const p = parseBbox(html);
+    expect(p.length).toBe(2);
+    expect(p[0].l).toEqual([[0.05, 0.2, 0.5, 0.1, "Straße &Co"], [0.05, 0.4, 0.4, 0.1, "Fußmatte"]]);
+    expect(p[0].w[1]).toEqual([0.3, 0.2, 0.25, 0.1, "&Co"]);
+    expect(p[1]).toEqual({ l: [], w: [] });
+  });
+  test("find ignores case, accents and ß, spans words and lines, and returns the boxes of the words it touches", () => {
+    const w = parseBbox(html)[0].w;
+    expect(findOnPage(w, "STRASSE")).toEqual([[[0.05, 0.2, 0.2, 0.1]]]);
+    expect(findOnPage(w, "co fuss")).toEqual([[[0.3, 0.2, 0.25, 0.1], [0.05, 0.4, 0.4, 0.1]]]);
+    expect(findOnPage(w, "matte")).toEqual([[[0.05, 0.4, 0.4, 0.1]]]);
+    expect(findOnPage(w, "nirgends")).toEqual([]);
+  });
+  test("an OCR line shares its box among its words by their letters", () => {
+    const p = fromOcr([{ x: 0.1, y: 0.2, w: 0.5, h: 0.05, t: "ab  cdef" }]);
+    expect(p.l).toEqual([[0.1, 0.2, 0.5, 0.05, "ab cdef"]]);
+    expect(p.w.map(x => [x[0], x[2], x[4]])).toEqual([[0.1, 0.1429, "ab"], [0.3143, 0.2857, "cdef"]]);
+  });
+});
+
 /* ---------- end to end ---------- */
 const haveVips = !!Bun.which("vips") && !!Bun.which("vipsheader") && !!Bun.which("pdftotext") && !!Bun.which("pdfinfo");
 const suite = haveVips ? describe : describe.skip;
@@ -181,6 +208,24 @@ suite("together end to end", () => {
     // the browser cannot post transcripts for another library, and a device never for another owner
     const failed = await srv.fetch(`/api/index/speech/doc/${rid}`, { method: "POST", token: mac.token, origin: null, json: { model: "apple-speech", failed: true } });
     expect(failed.status).toBe(200);
+  }, 60_000);
+
+  test("a PDF's text stands on its pages: the text layer and find say where; a scan waits for OCR", async () => {
+    const id = await upDoc(pdf("Der Schluessel liegt unter der Fussmatte"), "Notiz.pdf");
+    for (let i = 0; i < 100 && (srv.db().query("SELECT words_ok FROM doc WHERE id = ?").get(id) as any).words_ok === 0; i++) await Bun.sleep(50);
+    expect((srv.db().query("SELECT words_ok FROM doc WHERE id = ?").get(id) as any).words_ok).toBe(1);
+    const lines = await j(await srv.fetch(`/api/docs/${id}/words/1`, { cookie }));
+    expect(lines[0][4]).toBe("Der Schluessel liegt unter der Fussmatte");
+    expect((await srv.fetch(`/api/docs/${id}/words/2`, { cookie })).status).toBe(404);
+    const f = await j(await srv.fetch(`/api/docs/${id}/find?q=${encodeURIComponent("unter der fuss")}`, { cookie }));
+    expect(f.hits.length).toBe(1);
+    expect(f.hits[0].page).toBe(1);
+    expect(f.hits[0].boxes.length).toBe(3);
+    // a page with no text at all is a scan
+    const blank = enc.encode(`%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R>>endobj\n4 0 obj<</Length 21>>stream\n10 10 200 200 re f\nendstream endobj\ntrailer<</Root 1 0 R/Size 5>>\n%%EOF\n`);
+    const sid = await upDoc(blank, "Scan.pdf");
+    for (let i = 0; i < 100 && (srv.db().query("SELECT words_ok FROM doc WHERE id = ?").get(sid) as any).words_ok === 0; i++) await Bun.sleep(50);
+    expect((srv.db().query("SELECT words_ok FROM doc WHERE id = ?").get(sid) as any).words_ok).toBe(4);
   }, 60_000);
 
   test("the darkroom gets a file's plan and posts vectors of exactly that length", async () => {

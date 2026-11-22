@@ -8,11 +8,34 @@ import { reindexFts } from "./fts";
 import { thumbPath } from "./ingest";
 import { OCR_FILES } from "./ocr-worker";
 import { storeOcr } from "./search";
+import { pageFile, rowById } from "./docs";
+import { OCR_PAGES, storeOcrWords } from "./doctext";
+import { textChanged } from "./together";
 
 const MODELS = process.env.MONET_MODELS ?? "models";
 const BATCH = 25;
 const RETRY_MS = 10 * 60_000;
 const failed = new Set<number>(); // skipped until the next start: a photo the worker cannot read must not loop
+const failedDocs = new Set<number>();
+
+/** OCR of a scanned file (docs/together.md, "Text on the page"): its first OCR_PAGES pages, as the 1600 px page pictures
+ *  the viewer uses, read with line boxes. Then the file is dated, linked and embedded again with its new text.
+ *  False when the worker could not start (try later). */
+async function scan(id: number): Promise<boolean> {
+  const d = rowById(id);
+  if (!d || !d.pages) { db.query("UPDATE doc SET words_ok = 3 WHERE id = ?").run(id); return true; }
+  const items: { id: number; path: string; lines: true }[] = [];
+  for (let n = 1; n <= Math.min(d.pages, OCR_PAGES); n++) { const f = await pageFile(d, "p", n); if (f) items.push({ id: n, path: f, lines: true }); }
+  const pages: { x: number; y: number; w: number; h: number; t: string }[][] = Array.from({ length: d.pages ? Math.min(d.pages, OCR_PAGES) : 0 }, () => []);
+  let read = 0;
+  const code = await work(items, (r: { id: number; lines?: any[]; error?: string }) => {
+    if (Array.isArray(r.lines)) { pages[r.id - 1] = r.lines; read++; } else console.error(`ocr doc ${id} page ${r.id}: ${r.error}`);
+  });
+  if (code !== 0 && !read) { failedDocs.add(id); return false; }
+  storeOcrWords(id, pages);
+  await textChanged(id);
+  return true;
+}
 let running = false, again = false;
 
 function pending(): { id: number; path: string }[] {
@@ -26,28 +49,31 @@ function self(): string[] {
   return Bun.main.includes("$bunfs") ? [process.execPath, "ocr-worker"] : [process.execPath, Bun.main, "ocr-worker"];
 }
 
-/** False when the worker could not start at all. */
-async function batch(items: { id: number; path: string }[]): Promise<boolean> {
+/** One worker run over `items`; `onLine` gets every answer. Returns the exit code. */
+async function work(items: object[], onLine: (r: any) => void): Promise<number> {
   const p = Bun.spawn(self(), { stdin: new Blob([JSON.stringify(items)]), stdout: "pipe", stderr: "inherit" });
-  const done = new Set<number>();
   let buf = "";
-  const take = (line: string) => {
-    if (!line.trim()) return;
-    const r = JSON.parse(line) as { id: number; text?: string; error?: string };
-    done.add(r.id);
-    if (typeof r.text === "string") {
-      // the photo may have been deleted or read by the Mac meanwhile: only an unread, live photo takes the text
-      const live = db.query("SELECT 1 FROM item WHERE id = ? AND ocr_ok = 0 AND deleted_at IS NULL").get(r.id);
-      if (live) { storeOcr(r.id, r.text); reindexFts(r.id); }
-    } else { failed.add(r.id); console.error(`ocr ${r.id}: ${r.error}`); }
-  };
+  const take = (line: string) => { if (line.trim()) onLine(JSON.parse(line)); };
   for await (const chunk of p.stdout.pipeThrough(new TextDecoderStream())) {
     buf += chunk;
     let i: number;
     while ((i = buf.indexOf("\n")) >= 0) { take(buf.slice(0, i)); buf = buf.slice(i + 1); }
   }
   take(buf);
-  const code = await p.exited;
+  return p.exited;
+}
+
+/** False when the worker could not start at all. */
+async function batch(items: { id: number; path: string }[]): Promise<boolean> {
+  const done = new Set<number>();
+  const code = await work(items, (r: { id: number; text?: string; error?: string }) => {
+    done.add(r.id);
+    if (typeof r.text === "string") {
+      // the photo may have been deleted or read by the Mac meanwhile: only an unread, live photo takes the text
+      const live = db.query("SELECT 1 FROM item WHERE id = ? AND ocr_ok = 0 AND deleted_at IS NULL").get(r.id);
+      if (live) { storeOcr(r.id, r.text); reindexFts(r.id); }
+    } else { failed.add(r.id); console.error(`ocr ${r.id}: ${r.error}`); }
+  });
   // a worker that died (out of memory, a crash in the runtime) leaves the rest of its batch unread: skip those
   // photos for this run rather than starting it again on the same photos forever
   if (code === 0) return true;
@@ -74,6 +100,9 @@ export function kickOcr() {
           setTimeout(kickOcr, RETRY_MS).unref();
           break;
         }
+        // the photos are read: now one scanned file at a time
+        const doc = db.query("SELECT id FROM doc WHERE words_ok = 4 AND state = 'ok' AND deleted_at IS NULL ORDER BY uploaded_at DESC LIMIT 1").get() as { id: number } | null;
+        if (doc && !failedDocs.has(doc.id)) { if (await scan(doc.id)) continue; setTimeout(kickOcr, RETRY_MS).unref(); break; }
         if (!again) break;
       }
     } catch (e) { console.error("ocr:", (e as Error).message); }

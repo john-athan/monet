@@ -332,7 +332,7 @@ suite("rename, delete and owners", () => {
     const derivedDir = join(srv.dir, "data", "d", d.sha256.slice(0, 2));
     const mine = () => readdirSync(derivedDir).filter(f => f.startsWith(d.sha256));
     expect(existsSync(join(srv.dir, "originals", row.orig_path))).toBe(true);
-    expect(mine().sort()).toEqual([`${d.sha256}-c.webp`, `${d.sha256}-p1.webp`]);
+    expect(mine().sort()).toEqual([`${d.sha256}-c.webp`, `${d.sha256}-p1.webp`, `${d.sha256}-w.ndjson`]);
     // a file deleted a week ago stays; one deleted 31 days ago goes (library.purge from a second process on the same files)
     await srv.fetch(`/api/docs/${d.id}`, { method: "DELETE", cookie });
     srv.db().query("UPDATE doc SET deleted_at = ? WHERE id = ?").run(Date.now() - 7 * 86400_000, d.id);

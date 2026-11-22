@@ -133,6 +133,9 @@ const MIGRATIONS: string[] = [
    CREATE INDEX doc_link_ref ON doc_link(kind, ref_id);
    DROP TABLE doc_fts;
    CREATE VIRTUAL TABLE doc_fts USING fts5(title, text, labels, extra, tokenize='unicode61 remove_diacritics 2');`,
+  // the text of a file's pages where it stands (server/doctext.ts): 0 not yet, 1 from the PDF, 2 from OCR, 3 none, 4 waiting for OCR
+  `ALTER TABLE doc ADD COLUMN words_ok INTEGER NOT NULL DEFAULT 0;
+   CREATE INDEX doc_words ON doc(words_ok) WHERE words_ok IN (0, 4);`,
 ];
 
 const version = (db.query("PRAGMA user_version").get() as { user_version: number }).user_version;

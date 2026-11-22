@@ -6,7 +6,9 @@ import { db, metaGet, metaSet } from "./db";
 import { chooseDocDate, metaDate } from "./docdate";
 import { reindexDoc, rendered, rowById, summary, COLS_DOC_SUMMARY } from "./docs";
 import { reindexFts } from "./fts";
-import { ORIGINALS } from "./ingest";
+import { buildWords } from "./doctext";
+import { kickOcr } from "./ocr-queue";
+import { enqueue, ORIGINALS } from "./ingest";
 import { fold } from "./parse";
 import { HttpError, localDay, runText } from "./util";
 import type { DocSummary } from "../shared/types";
@@ -187,19 +189,26 @@ export function storeSpeech(ref: "item" | "doc", id: number, b: { model?: unknow
   })();
   if (ref === "item") reindexFts(id); else linkDoc(id);
 }
+/** A file's text came late (OCR of a scan): date, links, stack and vectors follow it. */
+export async function textChanged(id: number) {
+  await dateDoc(id);
+  linkDoc(id);
+  db.query("UPDATE doc SET vec_ok = 0 WHERE id = ?").run(id);
+  const o = db.query("SELECT owner_id FROM doc WHERE id = ?").get(id) as { owner_id: number } | null;
+  if (o) scheduleRestack(o.owner_id);
+}
+
 /* ---------- after a render, and once at start ---------- */
 const restackSoon = new Map<number, Timer>();
 function scheduleRestack(owner: number) {
   clearTimeout(restackSoon.get(owner));
   restackSoon.set(owner, setTimeout(() => { restackSoon.delete(owner); restackDocs(owner); }, 2000));
 }
-rendered.push(async id => {
-  await dateDoc(id);
-  linkDoc(id);
-  db.query("UPDATE doc SET vec_ok = 0 WHERE id = ?").run(id);
-  const o = db.query("SELECT owner_id FROM doc WHERE id = ?").get(id) as { owner_id: number } | null;
-  if (o) scheduleRestack(o.owner_id);
-});
+/** Hangs this module's steps after every render. Called once at start (main.ts): at import time the modules that import
+ *  each other (docs, ingest, the OCR queue) are not all initialised yet. */
+export function installTogether() {
+  rendered.push(async id => { await buildWords(id); await textChanged(id); if ((db.query("SELECT words_ok FROM doc WHERE id = ?").get(id) as any)?.words_ok === 4) kickOcr(); });
+}
 
 /** At start: files from before this module get their date and links, the search rows are built again where the table is
  *  new, and every library is stacked. Yields now and then so requests keep flowing. */
@@ -213,6 +222,12 @@ export async function sweepTogether(): Promise<{ dated: number; reindexed: numbe
   }
   for (const o of db.query("SELECT id FROM owner").all() as { id: number }[]) stacks += restackDocs(o.id);
   if (metaGet("link_rule") !== "1") { await relinkAll(); metaSet("link_rule", "1"); }
+  // files rendered before the text layer existed get their positions; scans among them go to OCR
+  let worded = 0;
+  for (const r of db.query("SELECT id FROM doc WHERE words_ok = 0 AND state = 'ok' AND kind IN ('doc','slides') AND deleted_at IS NULL ORDER BY id").all() as { id: number }[]) {
+    await enqueue(() => buildWords(r.id)); worded++;
+  }
+  if (worded) kickOcr();
   return { dated, reindexed, stacks };
 }
 /** Links again for every file: names and places change (a person gets named, photos arrive from a new town). All places

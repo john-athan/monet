@@ -14,6 +14,7 @@ import * as stack from "./stack";
 import * as zoom from "./zoom";
 import * as together from "./together";
 import * as docvec from "./docvec";
+import * as doctext from "./doctext";
 import { moment, moments } from "./moments";
 import { faceCrop, editPerson, loadCentroids, releaseWeak, mergePeople, moveFace, people, storeFaces } from "./people";
 import { loadPlaces } from "./places";
@@ -274,6 +275,13 @@ route("PATCH", "/api/docs/(\\d+)", async c => {
   const s = b.title !== undefined ? docs.rename(p.owner, i, b.title) : docs.summaryById(p.owner, i);
   return s ? J(s) : fail(404, "Das gibt es nicht (mehr).");
 });
+// the text on a page for the viewer's text layer, and where a text stands in a file (server/doctext.ts)
+route("GET", "/api/docs/(\\d+)/words/(\\d+)", c => {
+  browser(c.p);
+  const l = doctext.pageLines(id(c.m[1]), Number(c.m[2]));
+  return l ? J(l, 200, { "cache-control": "private, max-age=300" }) : fail(404, "Für diese Seite gibt es keinen Text.");
+});
+route("GET", "/api/docs/(\\d+)/find", async c => { browser(c.p); return J(await doctext.find(id(c.m[1]), c.url.searchParams.get("q") ?? "")); });
 route("GET", "/api/docs/(\\d+)/stack", c => J(together.stackOf(id(c.m[1]), lib_(c))));
 route("POST", "/api/docs/(\\d+)/unstack", c => { together.unstackDoc(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });
 route("DELETE", "/api/docs/(\\d+)", c => { docs.softDelete(browser(c.p).owner, id(c.m[1])); return J({ ok: true }); });
@@ -437,6 +445,7 @@ if (import.meta.main) {
     const out = await accounts.cli(argv);
     if (out != null) { console.log(`\n${out}\n`); process.exit(0); }
   } catch (e) { console.error((e as Error).message); process.exit(2); }
+  together.installTogether();
   const n = loadPlaces();
   const requeued = search.requeueOtherModels(); if (requeued) console.log(`${requeued} items analysed by an older image model: queued again for ${search.CLIP_MODEL}`);
   const freed = releaseWeak(); if (freed) console.log(`faces: ${freed} unsure faces taken out of groups without a name`);

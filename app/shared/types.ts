@@ -183,4 +183,8 @@ export interface MoveIn { into: number | null; docs?: number[]; items?: number[]
 export interface Transcript { lang: string | null; segments: { s: number; e: number; t: string }[] }
 /** a stretch of days away from home, or a big day at home, with the files that belong to it */
 export interface MomentSummary { key: string; title: string; subtitle: string; start: string; end: string; count: number; docs: number; cover: number[] }
+/** Where a text stands in a file: a page and the boxes of its words (fractions of the page), or a sheet's cell.
+ *  none: the file has no text positions (yet) */
+export type FindHit = { page: number; boxes: [number, number, number, number][] } | { sheet: number; row: number; col: number };
+export interface FindOut { hits: FindHit[]; more: boolean; none?: boolean }
 export interface MomentOut extends MomentSummary { items: ItemSummary[]; files: DocSummary[] }
