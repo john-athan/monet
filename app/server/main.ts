@@ -8,7 +8,7 @@ import { db } from "./db";
 import * as docs from "./docs";
 import * as folders from "./folders";
 import { ackExport, exportList, status } from "./status";
-import { applySidecar, DATA, ORIGINALS, placeVideos, sweep, thumbPath } from "./ingest";
+import { applySidecar, DATA, supersede, ORIGINALS, placeVideos, sweep, thumbPath } from "./ingest";
 import * as lib from "./library";
 import * as stack from "./stack";
 import * as zoom from "./zoom";
@@ -236,6 +236,9 @@ route("POST", "/api/items/(\\d+)/sidecar", async c => {
 });
 
 /* ---------- library ---------- */
+// the original of a photo the library holds as a smaller copy (the Drive import): it takes the copy's place
+route("POST", "/api/items/(\\d+)/supersede", c => J({ replaced: supersede(browser(c.p).owner, id(c.m[1])) }));
+
 route("GET", "/api/timeline", c => {
   const q = c.url.searchParams;
   return J(lib.timeline(lib_(c), { cursor: q.get("cursor"), from: q.get("from"), limit: Number(q.get("limit") ?? 24), favorite: q.get("favorite") === "1", album: q.get("album") ? Number(q.get("album")) : null, files: q.get("files") !== "0", kind: q.get("kind"), q: q.get("q") }));

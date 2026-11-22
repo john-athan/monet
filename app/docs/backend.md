@@ -46,6 +46,7 @@ Decisions:
 - A device token cannot claim another source: its `source` is its kind (`android`, `mac`), except `takeout` for the importer.
 - Bursts: same owner, same camera (not NULL), photos, within 2 s of a neighbour; chains merge. Rank by bytes, deleted members do not count.
 - The sidecar follows the date order of the spec: it fills the date only when the file had no EXIF and no date in its name, and a place only when the file had no GPS.
+- `POST /api/items/:id/supersede` (browser session; `tools/import-drive.ts` calls it): the item is the original of a smaller Takeout copy when that copy has the same name and kind, fewer bytes, the same aspect (either way round), no more pixels, and a time within a day. The original takes the copy's albums (and album covers), favourite, place and folder when it has none, and its date when the copy's source of the date ranks higher (EXIF, sidecar, name, mtime, upload); the copy goes to the trash. Answers `{replaced: id | null}`.
 
 ## Files
 

@@ -272,3 +272,49 @@ export function applySidecar(owner: number, id: number, s: Sidecar) {
   if (sets.length) { updateBurst(id); }
   reindexFts(id);
 }
+
+/* ---------- a better copy of a photo the library already has ---------- */
+// The Takeout gave recompressed copies (Google's "storage saver"); the originals came later from Drive under the same
+// name. The original takes over what the copy had gathered, the copy goes to the trash. Faces, labels and the text
+// are not carried over: the indexer works on the original again.
+const DATE_RANK: Record<string, number> = { exif: 0, sidecar: 1, name: 2, mtime: 3, upload: 4 };
+const DAY_MS = 86400_000;
+type Cand = { id: number; kind: string; bytes: number; width: number | null; height: number | null; taken_at: number; tz_min: number | null; taken_src: string; day: string;
+  lat: number | null; lon: number | null; place_id: number | null; favorite: number; folder_id: number | null; burst_id: number | null; unstacked: number; orig_name: string | null };
+/** Same picture? Same aspect (either way round, for a copy that was rotated on the way) and no more pixels than the original. */
+function samePicture(a: Cand, b: Cand): boolean {
+  if (!a.width || !a.height || !b.width || !b.height) return a.kind === "video"; // ffprobe may not know a size
+  const r = (w: number, h: number) => w / h, ra = r(a.width, a.height);
+  const fits = (w: number, h: number) => Math.abs(r(w, h) - ra) / ra < 0.02;
+  return (fits(b.width, b.height) || fits(b.height, b.width)) && a.width * a.height >= b.width * b.height * 0.98;
+}
+/** Finds the smaller Takeout copy of `newId` (same name and kind, fewer bytes, the same picture, taken within a day: a copy may
+ *  read its time in another zone) and puts `newId` in its place. Returns the id of the copy, or null when there is none. */
+export function supersede(owner: number, newId: number): number | null {
+  const COLS = "id, kind, bytes, width, height, taken_at, tz_min, taken_src, day, lat, lon, place_id, favorite, folder_id, burst_id, unstacked, orig_name";
+  const it = db.query(`SELECT ${COLS} FROM item WHERE id = ? AND owner_id = ? AND deleted_at IS NULL`).get(newId, owner) as Cand | null;
+  if (!it) throw new HttpError(404, "Das gibt es nicht (mehr).");
+  if (!it.orig_name) return null;
+  const old = (db.query(`SELECT ${COLS} FROM item WHERE owner_id = ? AND id != ? AND deleted_at IS NULL AND source = 'takeout' AND kind = ? AND lower(orig_name) = lower(?) AND bytes < ?`)
+    .all(owner, it.id, it.kind, it.orig_name, it.bytes) as Cand[])
+    .filter(o => Math.abs(o.taken_at - it.taken_at) <= DAY_MS && samePicture(it, o))
+    .sort((a, b) => Math.abs(a.taken_at - it.taken_at) - Math.abs(b.taken_at - it.taken_at))[0];
+  if (!old) return null;
+  db.transaction(() => {
+    const sets = ["favorite = ?", "unstacked = ?"], args: any[] = [Math.max(it.favorite, old.favorite), Math.max(it.unstacked, old.unstacked)];
+    if ((DATE_RANK[old.taken_src] ?? 9) < (DATE_RANK[it.taken_src] ?? 9)) {
+      sets.push("taken_at = ?", "tz_min = ?", "taken_src = ?", "day = ?"); args.push(old.taken_at, old.tz_min, old.taken_src, old.day);
+    }
+    if (it.lat == null && old.lat != null) { sets.push("lat = ?", "lon = ?", "place_id = ?"); args.push(old.lat, old.lon, old.place_id); }
+    if (it.folder_id == null && old.folder_id != null) { sets.push("folder_id = ?"); args.push(old.folder_id); }
+    db.query(`UPDATE item SET ${sets.join(", ")} WHERE id = ?`).run(...args, it.id);
+    db.query("INSERT OR IGNORE INTO album_item (album_id, item_id, added_at) SELECT album_id, ?, added_at FROM album_item WHERE item_id = ?").run(it.id, old.id);
+    db.query("DELETE FROM album_item WHERE item_id = ?").run(old.id);
+    db.query("UPDATE album SET cover_item_id = ? WHERE cover_item_id = ?").run(it.id, old.id);
+    db.query("UPDATE item SET deleted_at = ? WHERE id = ?").run(now(), old.id);
+  })();
+  rankBurst(old.burst_id);
+  updateBurst(it.id);
+  reindexFts(it.id);
+  return old.id;
+}

@@ -46,8 +46,9 @@ export async function known(s: Server, path: string, sha: string): Promise<any |
   return r.ok && j.item ? j.item : null;
 }
 
-/** Sends one file. Resumes from the server's `received` after a 409 or a dropped connection. Returns the item (or null). */
-export async function sendFile(s: Server, path: string, sha: string, source = "web"): Promise<{ item: any; duplicate: boolean }> {
+/** Sends one file. Resumes from the server's `received` after a 409 or a dropped connection. Returns the item, or the
+ *  doc for a file that is no photo or video. `extra`: more query parameters (folder=, in=). */
+export async function sendFile(s: Server, path: string, sha: string, source = "web", extra: Record<string, string> = {}): Promise<{ item?: any; doc?: any; duplicate: boolean }> {
   const f = Bun.file(path), total = f.size, mtime = Math.floor(statSync(path).mtimeMs);
   const name = path.split("/").pop()!;
   let offset = 0, tries = 0;
@@ -55,11 +56,11 @@ export async function sendFile(s: Server, path: string, sha: string, source = "w
     const end = Math.min(total, offset + CHUNK);
     let res: Response | null = null;
     try {
-      res = await fetch(`${s.origin}/api/upload/${sha}?offset=${offset}&total=${total}&name=${encodeURIComponent(name)}&mtime=${mtime}&source=${source}`,
+      res = await fetch(`${s.origin}/api/upload/${sha}?offset=${offset}&total=${total}&name=${encodeURIComponent(name)}&mtime=${mtime}&source=${source}${Object.entries(extra).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("")}`,
         { method: "PUT", headers: auth(s), body: f.slice(offset, end) });
     } catch { /* network: retry below */ }
     const j: any = res ? await res.json().catch(() => ({})) : {};
-    if (res?.ok && j.item) return j;
+    if (res?.ok && (j.item || j.doc)) return j;
     if (res?.ok || (res?.status === 409 && typeof j.received === "number")) { tries = 0; offset = j.received ?? end; continue; }
     if (res && res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) throw new Error(`${name}: ${res.status} ${j.error ?? ""}`);
     if (++tries > 5) throw new Error(`${name}: upload gave up`);
