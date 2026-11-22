@@ -87,6 +87,9 @@ export interface IndexIn { model: string; clip?: string; faces?: IndexFace[]; oc
 export interface Status {
   items: number; videos: number; bytes: number;
   stages: Record<"thumbs" | "clip" | "faces" | "ocr" | "labels", { done: number; total: number }>;
+  /** files with vectors for the search, and videos and recordings with a transcript (docs/together.md) */
+  files: { done: number; total: number };
+  speech: { done: number; total: number };
   devices: number; lastUpload: number | null;
   /** the style of this library (owner.theme): the Android and Mac apps wear it from shared/styles.ts */
   theme: Theme;

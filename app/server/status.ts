@@ -1,6 +1,8 @@
 // /api/status and /api/export/list: counts for the Geräte page and the Mac's second copy.
 import { db } from "./db";
 import { counts } from "./docs";
+import { docVecStats } from "./docvec";
+import { SPEECH_MAX_MS } from "./together";
 import { now } from "./util";
 import type { ExportRow, Status, Theme } from "../shared/types";
 
@@ -22,6 +24,11 @@ export function status(owner: number): Status {
       ocr: { done: c(`SELECT count(*) AS n FROM item WHERE ${live} AND kind = 'photo' AND ocr_ok = 1`), total: photos },
       labels: { done: done("labels_ok"), total },
     },
+    // files and speech (docs/together.md): vectors of files from the darkroom, transcripts from the Mac
+    files: docVecStats(owner),
+    speech: db.query(`SELECT coalesce(sum(speech_ok != 0), 0) AS done, count(*) AS total FROM (
+      SELECT speech_ok FROM item WHERE ${live} AND kind = 'video' AND thumbs_ok = 1 AND coalesce(duration_ms, 0) <= ?
+      UNION ALL SELECT speech_ok FROM doc WHERE ${live} AND kind = 'audio' AND state = 'ok' AND album IS NULL AND coalesce(duration_ms, 0) <= ?)`).get(owner, SPEECH_MAX_MS, owner, SPEECH_MAX_MS) as { done: number; total: number },
     devices: c("SELECT count(*) AS n FROM auth_device WHERE account_id = ? AND revoked_at IS NULL"),
     secondCopy: (db.query("SELECT count(second_copy_at) AS n, max(second_copy_at) AS last FROM item WHERE owner_id = ?").get(owner) as { n: number; last: number | null }),
     lastUpload: (db.query("SELECT max(uploaded_at) AS m FROM item WHERE owner_id = ?").get(owner) as { m: number | null }).m,

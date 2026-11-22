@@ -34,9 +34,10 @@
   const stages = $derived(s ? [
     { name: "Vorschaubilder", ...s.stages.thumbs }, { name: "Bildinhalt für die Suche", ...s.stages.clip }, { name: "Gesichter", ...s.stages.faces },
     { name: "Text in Bildern", ...s.stages.ocr }, { name: "Dinge im Bild", ...s.stages.labels },
+    ...(s.files?.total ? [{ name: "Dateien für die Suche", ...s.files }] : []), ...(s.speech?.total ? [{ name: "Gesprochenes in Videos und Aufnahmen", ...s.speech }] : []),
   ].map(x => ({ ...x, pct: x.total ? Math.floor((x.done / x.total) * 1000) / 10 : 100 })) : []);
   const dr = $derived($darkroomStatus);
-  const drText = $derived(dr.state === "working" ? `Arbeitet: ${num(dr.pending)} ${dr.pending === 1 ? "Foto wartet" : "Fotos warten"}, ${num(dr.done)} fertig` : dr.state === "loading" ? "Lädt die Modelle" : dr.state === "paused" ? "Pausiert, solange die Seite im Hintergrund ist" : dr.state === "error" ? "Hat ein Problem, versucht es später wieder" : app.wide ? "Wartet auf neue Fotos" : "Läuft nur auf dem Computer, solange die Seite offen ist");
+  const drText = $derived(dr.state === "working" ? `Arbeitet: ${num(dr.pending)} ${dr.files ? (dr.pending === 1 ? "Datei wartet" : "Dateien warten") : dr.pending === 1 ? "Foto wartet" : "Fotos warten"}, ${num(dr.done)} fertig` : dr.state === "loading" ? "Lädt die Modelle" : dr.state === "paused" ? "Pausiert, solange die Seite im Hintergrund ist" : dr.state === "error" ? "Hat ein Problem, versucht es später wieder" : app.wide ? "Wartet auf neue Fotos" : "Läuft nur auf dem Computer, solange die Seite offen ist");
   const roles = (d: DeviceOut) => [d.scopes.includes("upload") ? "lädt hoch" : "", d.scopes.includes("index") ? "analysiert" : "", d.kind === "mac" ? "zweite Kopie" : ""].filter(Boolean);
   const seen = (d: DeviceOut) => d.lastSeenAt && now - d.lastSeenAt < 120_000 ? "gerade aktiv" : ago(d.lastSeenAt);
 
@@ -134,7 +135,7 @@
             <span class="sl"><span class="b">Dunkelkammer in diesem Browser</span></span>
             <p class="m small" role="status">{drText}</p>
           </div>
-          <p class="m small">Gesichter und Dinge erkennt ein Browser mit offener Monet-Seite oder das MacBook. Text in Bildern liest der Server selbst, dazu übernimmt er die Suche und das Gruppieren der Gesichter.</p>
+          <p class="m small">Gesichter, Dinge und Dateien erkennt ein Browser mit offener Monet-Seite oder das MacBook, Gesprochenes schreibt das MacBook mit. Text in Bildern liest der Server selbst, dazu übernimmt er die Suche und das Gruppieren der Gesichter.</p>
         </div>
       </section>
     </div>

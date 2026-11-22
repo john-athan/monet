@@ -14,7 +14,7 @@
   const dr = $derived($darkroomStatus);
   const pending = $derived(status.s ? Math.max(0, status.s.stages.thumbs.total - status.s.stages.thumbs.done) : 0);
   const line = $derived(
-    dr.state === "working" ? `Diese Seite analysiert gerade ${dr.pending === 1 ? "ein Foto" : count(dr.pending, "Foto", "Fotos")}.` :
+    dr.state === "working" ? `Diese Seite analysiert gerade ${dr.files ? (dr.pending === 1 ? "eine Datei" : count(dr.pending, "Datei", "Dateien")) : dr.pending === 1 ? "ein Foto" : count(dr.pending, "Foto", "Fotos")}.` :
     dr.state === "loading" ? "Die Dunkelkammer lädt ihre Modelle." :
     dr.state === "paused" ? "Die Dunkelkammer macht Pause." :
     dr.state === "error" ? "Die Dunkelkammer hat ein Problem." :

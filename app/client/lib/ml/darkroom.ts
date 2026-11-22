@@ -5,7 +5,7 @@ import { ml, encodeVec, CLIP_MODEL } from "./index";
 import { LABELS, labelPrompt } from "../../../shared/labels";
 
 export type DarkroomState = "idle" | "loading" | "running" | "paused" | "waiting" | "error" | "stopped";
-export type DarkroomStatus = { state: DarkroomState; done: number; pending: number; current: number | null; error?: string; retryInMs?: number };
+export type DarkroomStatus = { state: DarkroomState; done: number; pending: number; current: number | null; error?: string; retryInMs?: number; /** working on files, not photos */ files?: boolean };
 
 export type DarkroomGlobal = { busy: boolean; label: string; progress: number; pending: number; items: { id: number; done: boolean }[] };
 const WORDS = ["null", "ein", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf"];
@@ -90,6 +90,7 @@ export class Darkroom {
         // photos first; when none wait, the files (their ids live in another table, so they are kept apart)
         if (!list.length && await this.filesOnce()) { backoff = 0; continue; }
         this.files = false;
+        if (this.s.files) this.set({ files: false });
         this.batch = list.map(p => ({ id: p.id, done: false })); this.batchTotal = list.length;
         this.set({ pending: list.length, state: list.length ? "running" : "waiting", error: undefined, retryInMs: undefined });
         if (!list.length) { this.set({ current: null }); await this.sleep(POLL_MS); continue; }
@@ -135,7 +136,7 @@ export class Darkroom {
     if (!list.length) return false;
     this.files = true;
     this.batch = list.map(d => ({ id: d.id, done: false })); this.batchTotal = list.length;
-    this.set({ pending: list.length, state: "running", error: undefined, retryInMs: undefined });
+    this.set({ pending: list.length, state: "running", error: undefined, retryInMs: undefined, files: true });
     for (let i = 0; i < list.length && this.running && !this.hidden; i++) {
       this.set({ current: null, pending: list.length - i });
       try { await this.oneDoc(list[i]); this.set({ done: this.s.done + 1 }); }
@@ -147,6 +148,7 @@ export class Darkroom {
       this.batch[i].done = true;
     }
     this.batch = []; this.batchTotal = 0; this.files = false;
+    this.set({ files: false });
     return true;
   }
   private async oneDoc(d: DocPending) {
