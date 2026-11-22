@@ -321,7 +321,7 @@ route("POST", "/api/search", async c => { const b = await body(c.req); return J(
 // the files that name a person or a place: the person's and the place's pages show them
 route("GET", "/api/links", c => {
   const q = c.url.searchParams, kind = q.has("person") ? "person" : "place", ref = Number(q.get(kind));
-  if (!Number.isInteger(ref) || ref <= 0) throw new HttpError(400, "Wer oder wo?");
+  if (!Number.isInteger(ref) || ref <= 0) throw new HttpError(400, "Person oder Ort fehlt.");
   return J(together.linkedDocs(kind, ref, [lib_(c)], lib_(c)));
 });
 route("GET", "/api/moments", c => J(moments(lib_(c))));
