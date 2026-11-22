@@ -55,13 +55,15 @@ Monet is for people who trust each other, on a server one of them runs. There ar
 everyone signs in with a passkey, and new people arrive by a link that works once.
 
 ```sh
-cd app && bun install && bun run build.ts && bun server/main.ts   # prints a setup link on first start
+cd app && bun install && bun run build.ts
+MONET_ORIGIN=https://photos.example MONET_SETUP_TOKEN=<long random string> bun server/main.ts
 ```
 
 1. Put it behind HTTPS (passkeys need it), listening on 127.0.0.1: a Cloudflare Tunnel, or Caddy with
-   `reverse_proxy 127.0.0.1:4320`. Set `MONET_ORIGIN` to the public address once; passkeys are bound to its host name.
+   `reverse_proxy 127.0.0.1:4320`. Set `MONET_ORIGIN` to the public address once, before the first passkey exists:
+   passkeys are bound to its host name.
    The proxy must set `X-Forwarded-For` and overwrite what the client sent.
-2. Set `MONET_SETUP_TOKEN` to a long random string. Opening `https://<host>/setup#<token>` makes the first account,
+2. `MONET_SETUP_TOKEN` is a long random string you choose; without it nobody can make the first account. Opening `https://<host>/setup#<token>` makes the first account,
    an admin.
 3. Invite from *Haushalt*, or `monet invite <name>` on the server. Send the link over a messenger.
 4. A lost phone: an admin taps *Neuer Passkey* next to the person. A locked-out last admin runs

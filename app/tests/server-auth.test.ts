@@ -253,3 +253,11 @@ describe("pairing and device scopes", () => {
     expect(list.find((d: any) => d.id === android.deviceId).revokedAt).toBeGreaterThan(0);
   });
 });
+
+describe("routes that answer without a session", () => {
+  test("the label vocabulary state and a JSON body that is not an object are refused", async () => {
+    expect((await srv.fetch("/api/index/vocab?model=x")).status).toBe(401);
+    const s = await seedSession(srv);
+    expect((await srv.fetch("/api/albums", { method: "POST", json: null, cookie: s })).status).toBe(400);
+  });
+});

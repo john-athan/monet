@@ -2,7 +2,7 @@
 // Run as `monet` (the server), or as `monet invite <name> [--admin] [--theme ernst]`, `monet reset-passkeys [name]`
 // and `monet members` (the accounts module's commands, docs/accounts.md: they print a link or a list and exit).
 import { existsSync, statSync } from "node:fs";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, sep } from "node:path";
 import { accounts, can, clientIp, ORIGIN, sameOrigin, type Principal } from "./auth";
 import { db } from "./db";
 import { ackExport, exportList, status } from "./status";
@@ -46,7 +46,11 @@ async function body<T = any>(req: Request, max = 1 << 20): Promise<T> {
   if (len > max) throw new HttpError(413, "Die Anfrage ist zu groß.");
   const text = await req.text();
   if (text.length > max) throw new HttpError(413, "Die Anfrage ist zu groß.");
-  try { return text ? JSON.parse(text) : ({} as T); } catch { throw new HttpError(400, "Ungültiges JSON."); }
+  let v: unknown;
+  try { v = text ? JSON.parse(text) : {}; } catch { throw new HttpError(400, "Ungültiges JSON."); }
+  // every route reads fields off the result: null or a bare number would end in a 500
+  if (v === null || typeof v !== "object" || Array.isArray(v)) throw new HttpError(400, "Ungültiges JSON.");
+  return v as T;
 }
 const need = (p: Principal | null): Principal => { if (!p) throw new HttpError(401, "Du bist nicht angemeldet."); return p; };
 /** Pages and everything that reads the library: a browser session only. Devices see nothing but their own scopes. */
@@ -101,9 +105,9 @@ function media(c: Ctx): Response {
 /* ---------- static client and models ---------- */
 const HASHED = /[.-][A-Za-z0-9_]{8,}\.(js|css|wasm|woff2|png|svg|webp|jpg|map)$/;
 function staticFile(req: Request, path: string): Response | null {
-  const root = normalize(DIST);
+  const root = normalize(DIST).replace(/[\\/]+$/, "");
   const full = normalize(join(root, path));
-  if (!full.startsWith(root) || !existsSync(full) || !statSync(full).isFile()) return null;
+  if (!full.startsWith(root + sep) || !existsSync(full) || !statSync(full).isFile()) return null;
   const ae = req.headers.get("accept-encoding") ?? "", ext = extname(full);
   const h: Record<string, string> = { "content-type": MIME[ext] ?? "application/octet-stream", vary: "accept-encoding", "cache-control": HASHED.test(full) || path.startsWith("vendor/ort/") ? "public, max-age=31536000, immutable" : "no-cache" };
   let src = full;
@@ -219,7 +223,7 @@ route("GET", "/api/index/pending", c => {
     AND (${cond.join(" OR ")}) ORDER BY owner_id = ? DESC, taken_at DESC LIMIT ?`).all(...(all ? [] : [p.owner]), p.owner, limit) as any[];
   return J(rows.map(r => ({ id: r.id, kind: r.kind, needs: [!r.clip_ok && "clip", !r.faces_ok && "faces", !r.ocr_ok && r.kind === "photo" && "ocr"].filter(Boolean) })));
 });
-route("GET", "/api/index/vocab", c => J({ have: search.hasVocab(c.url.searchParams.get("model") ?? "") }));
+route("GET", "/api/index/vocab", c => { scope(c.p, "index"); return J({ have: search.hasVocab(c.url.searchParams.get("model") ?? "") }); });
 route("POST", "/api/index/vocab", async c => {
   const p = scope(c.p, "index"); const b = await body(c.req, 8 << 20);
   const n = search.storeVocab(String(b.model), Array.isArray(b.labels) ? b.labels : []);

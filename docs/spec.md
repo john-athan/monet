@@ -121,7 +121,7 @@ item_fts  FTS5(ocr_text, labels, place, people, orig_name)  -- rebuilt for an it
 - Devices (Mac, Android): a pairing code from the Geräte page becomes a device token. Scopes: Android
   `upload,index`, the Mac also `export`. No delete, no people edits, no account changes. The Mac agent's
   WebView gets a device session via `POST /api/devices/session` (bearer -> cookie with kind 'device').
-- On the server: `monet-invite <name> [--admin] [--theme ernst]`, `monet-reset-passkeys [name]`, `monet-members`.
+- On the server: `monet-invite <name> [--admin] [--theme ernst]`, `monet-reset-passkeys [name]`, `monet-members` (wrappers deploy.sh installs around the binary's subcommands).
 - Headers: strict CSP (`default-src 'self'; img-src 'self' blob: data:; script-src 'self' 'wasm-unsafe-eval';
   worker-src 'self' blob:; connect-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'`),
   `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, HSTS. No public media URL exists.
@@ -158,7 +158,7 @@ GET  /api/things -> [{label,count,item}]  (labels of the shown photos, most comm
 POST /api/albums/:id/items {ids} ; DELETE /api/albums/:id/items {ids}
 GET  /api/index/pending?limit=&needs=clip,faces|ocr -> [{id, kind, needs:['clip','faces','ocr']}]  (needs: only work the caller can do)
 POST /api/index/:id {model, clip?, faces?, ocr?}   model 'siglip2-b32-256'; an ocr-only post may use model 'vision-ocr'
-GET  /api/index/vocab?model= -> {have: bool} ; POST /api/index/vocab {model, labels:[{label, lang, vec}]}
+GET  /api/index/vocab?model= -> {have: bool}  (scope index) ; POST /api/index/vocab {model, labels:[{label, lang, vec}]}
 GET  /api/status -> {items, videos, bytes, stages:{thumbs,clip,faces,ocr,labels}: {done,total}, devices, lastUpload}
 GET  /api/export/list?after=  (for the Mac's second copy) -> [{id, sha256, ext, bytes, takenAt}]
 POST /api/export/ack {ids:[...]}  (device or session) sets item.second_copy_at = now for those ids; read back by
