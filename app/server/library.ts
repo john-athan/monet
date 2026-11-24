@@ -11,6 +11,7 @@ import { HttpError, json, now, todayBerlin } from "./util";
 import type { DocSummary, MapOut, AlbumDetail, AlbumOut, Band, ItemDetail, ItemSummary, PlaceOut, SeriesOut, ThingOut, Timeline, TimelineDay } from "../shared/types";
 import { chroma, hexToRgb } from "./calc";
 import { DATA } from "./ingest";
+import { seasonOf } from "./parse";
 
 /** Columns every summary needs. burst_n is the number of live members, only meaningful for the shown (rank 1) item. */
 export const SUM_COLS = `i.id, i.kind, i.width, i.height, i.color, i.taken_at, i.duration_ms, i.favorite, i.burst_id, i.burst_rank, i.day, i.colors, i.place_id,
@@ -168,14 +169,13 @@ export function purge(olderThanMs = 30 * 86400_000) {
 
 /* ---------- series: the same place in the same season, in at least 3 different years ---------- */
 const SEASONS = [["winter", "Winter"], ["fruehling", "Frühling"], ["sommer", "Sommer"], ["herbst", "Herbst"]] as const;
-export const seasonOf = (month: number) => month === 12 || month <= 2 ? 0 : month <= 5 ? 1 : month <= 8 ? 2 : 3;
 export function series(owner: number): SeriesOut[] {
   const rows = db.query(`SELECT i.id, i.day, i.colors, i.color, i.place_id, p.name FROM item i JOIN place p ON p.id = i.place_id
     WHERE i.owner_id = ? AND ${SHOWN} ORDER BY i.day, i.id`).all(owner) as any[];
   const groups = new Map<string, { name: string; place: number; season: number; byYear: Map<number, any[]> }>();
   for (const r of rows) {
-    const y = +r.day.slice(0, 4), m = +r.day.slice(5, 7), s = seasonOf(m);
-    const year = m === 12 ? y + 1 : y; // December belongs to the winter that ends in the next year
+    const y = +r.day.slice(0, 4), m = +r.day.slice(5, 7), s = seasonOf(r.day);
+    const year = s === 0 && m === 12 ? y + 1 : y; // late December belongs to the winter that ends in the next year
     const k = `${r.place_id}-${SEASONS[s][0]}`;
     const g = groups.get(k) ?? groups.set(k, { name: r.name, place: r.place_id, season: s, byYear: new Map() }).get(k)!;
     (g.byYear.get(year) ?? g.byYear.set(year, []).get(year)!).push(r);

@@ -5,7 +5,7 @@ import { db } from "./db";
 import { COLS_DOC_SUMMARY, DOC_TOP, ftsMatch, summary as docSummary } from "./docs";
 import { semanticDocs } from "./docvec";
 import { reindexFts } from "./fts";
-import { parseQuery, SEASON_MONTHS, type ParseCtx } from "./parse";
+import { parseQuery, SEASON_START, SEASON_KEYS, type ParseCtx } from "./parse";
 import { bandOf, daysOf, SHOWN, SUM_COLS, summary } from "./library";
 import { blobVec, decodeVec, dot, HttpError, localDay, vecBlob } from "./util";
 import type { Chip, DocSummary, IndexIn, ItemSummary, ParseOut, SearchIn, SearchOut } from "../shared/types";
@@ -165,7 +165,7 @@ const libraryCtx = (owners: number[]): ParseCtx => ({
   people: db.query(`SELECT id, name FROM person WHERE owner_id IN ${inOwners(owners)} AND name IS NOT NULL AND hidden = 0`).all(...owners) as any[],
   places: db.query(`SELECT DISTINCT p.id, p.name FROM place p JOIN item i ON i.place_id = p.id WHERE i.owner_id IN ${inOwners(owners)} AND i.deleted_at IS NULL`).all(...owners) as any[],
 });
-export { parseQuery, SEASON_MONTHS, fold } from "./parse";
+export { parseQuery, SEASON_START, seasonOf, fold } from "./parse";
 /** `owners`: the libraries searched (one, or the whole household). */
 export const parse = (owners: number | number[], q: string) => parseQuery(String(q ?? "").slice(0, 300), libraryCtx(([] as number[]).concat(owners)));
 
@@ -178,7 +178,12 @@ function chipSql(c: Chip, args: any[]): string | null {
   const [k, v] = [c.value.slice(0, c.value.indexOf(":")), c.value.slice(c.value.indexOf(":") + 1)];
   if (k === "y" && /^\d{4}$/.test(v)) { args.push(v); return "substr(i.day, 1, 4) = ?"; }
   if (k === "m" && /^\d{1,2}$/.test(v)) { args.push(String(+v).padStart(2, "0")); return "substr(i.day, 6, 2) = ?"; }
-  if (k === "s" && SEASON_MONTHS[v]) { args.push(...SEASON_MONTHS[v].map(m => String(m).padStart(2, "0"))); return `substr(i.day, 6, 2) IN (${SEASON_MONTHS[v].map(() => "?").join(",")})`; }
+  if (k === "s" && SEASON_START[v]) {
+    // from this season's start up to the next one's; winter wraps around New Year
+    const next = SEASON_START[SEASON_KEYS[(SEASON_KEYS.indexOf(v as any) + 1) % 4]];
+    args.push(SEASON_START[v], next);
+    return `(substr(i.day, 6, 5) >= ? ${v === "winter" ? "OR" : "AND"} substr(i.day, 6, 5) < ?)`;
+  }
   const r = /^(\d{2}-\d{2})\.\.(\d{2}-\d{2})$/.exec(v);
   if (k === "r" && r) { args.push(r[1], r[2]); return "substr(i.day, 6, 5) BETWEEN ? AND ?"; }
   return null;

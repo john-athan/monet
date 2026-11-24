@@ -172,7 +172,7 @@ POST /api/export/ack {ids:[...]}  (device or session) sets item.second_copy_at =
 burst [{id}], labels, ocr, source, origName, bytes, backup {original: true, secondCopyAt}.
 
 Search semantics: `parse` turns names of people (case-insensitive, also unnamed never), years, months, seasons
-(Winter, Frühling, Sommer, Herbst; German and English), `Weihnachten`, and place names known in the library into
+(Winter, Frühling, Sommer, Herbst; German and English; astronomical, from Mar 20, Jun 21, Sep 22, Dec 21), `Weihnachten`, and place names known in the library into
 chips; the rest becomes a `content` chip. `search` filters by person/date/place chips and ranks by the CLIP cosine
 of `vec` (computed client-side from the content chip) blended with FTS5 bm25 over OCR text, labels and file names.
 `relaxed` re-runs without the most restrictive person chip and reports its count ("Im Schnee, ohne Oma").

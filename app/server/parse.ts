@@ -12,7 +12,15 @@ const SEASON_WORDS: Record<string, [string, string]> = {
   winter: ["winter", "Winter"], fruhling: ["fruehling", "Frühling"], fruehling: ["fruehling", "Frühling"], spring: ["fruehling", "Frühling"],
   sommer: ["sommer", "Sommer"], summer: ["sommer", "Sommer"], herbst: ["herbst", "Herbst"], autumn: ["herbst", "Herbst"],
 };
-export const SEASON_MONTHS: Record<string, number[]> = { winter: [12, 1, 2], fruehling: [3, 4, 5], sommer: [6, 7, 8], herbst: [9, 10, 11] };
+/** Astronomical seasons, as the calendar has them: each starts on its equinox or solstice ("MM-DD", inclusive) and runs
+ *  to the next one. The real dates move by a day between years; fixed dates keep series and search the same. */
+export const SEASON_START: Record<string, string> = { fruehling: "03-20", sommer: "06-21", herbst: "09-22", winter: "12-21" };
+export const SEASON_KEYS = ["winter", "fruehling", "sommer", "herbst"] as const;
+/** The season of a day "MM-DD" (or a full "YYYY-MM-DD"), as an index into SEASON_KEYS. */
+export function seasonOf(day: string): number {
+  const md = day.slice(-5);
+  return md >= SEASON_START.winter || md < SEASON_START.fruehling ? 0 : md < SEASON_START.sommer ? 1 : md < SEASON_START.herbst ? 2 : 3;
+}
 
 export type ParseCtx = { people: { id: number; name: string }[]; places: { id: number; name: string }[] };
 const PUNCT = /^[\s,;.!?]+|[\s,;.!?]+$/g;

@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { contrast, dayTitle, daySign, DAY_BG, hexToRgb, kmeans, monthPalette, NIGHT_BG, readPpm } from "../server/calc";
 import { bestMatch, addTo, SAME_PERSON, type Group } from "../server/cluster";
 import { dateFromName, metaFromFfprobe, metaFromVips, parseIso6709 } from "../server/exif";
-import { parseQuery } from "../server/parse";
+import { parseQuery, seasonOf } from "../server/parse";
 import { berlinOffsetMin, berlinWallToUtc, localDay } from "../server/util";
 
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -133,6 +133,11 @@ describe("search parse", () => {
     expect(kinds("summer")).toEqual(["date:s:sommer"]);
     expect(kinds("Weihnachten 2020")).toEqual(["date:r:12-20..12-26", "date:y:2020"]);
     expect(kinds("März")).toEqual(["date:m:3"]);
+  });
+  test("seasons are astronomical: they start on the equinox or solstice, not on the first of the month", () => {
+    const name = (d: string) => ["winter", "fruehling", "sommer", "herbst"][seasonOf(d)];
+    expect(["2024-09-01", "2024-09-21", "2024-09-22", "2024-12-20", "2024-12-21"].map(name)).toEqual(["sommer", "sommer", "herbst", "herbst", "winter"]);
+    expect(["01-15", "03-19", "03-20", "06-20", "06-21"].map(name)).toEqual(["winter", "winter", "fruehling", "fruehling", "sommer"]);
   });
   test("places, also by the English name, and multi-word names", () => {
     expect(kinds("Berge in Garmisch-Partenkirchen")).toEqual(["place:5", "content:Berge in"]);
