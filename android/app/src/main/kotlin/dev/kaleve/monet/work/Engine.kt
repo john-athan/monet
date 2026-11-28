@@ -44,37 +44,60 @@ class Engine(
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    private fun upload(l: Local, sha: String, onBytes: (Long) -> Unit, stopped: () -> Boolean) {
+    /** The server or the file said no to this one file: skip it, the rest of the run goes on. */
+    private class Refused(reason: String) : IOException(reason)
+
+    private fun upload(l: Local, sha: String, onPart: (Float) -> Unit, stopped: () -> Boolean) {
         val total = l.size
         var offset = 0L
         var stalls = 0
-        openFd(l)?.use { pfd ->
+        var drops = 0
+        val fd = try { openFd(l) } catch (_: IOException) { null } catch (_: SecurityException) { null }
+        (fd ?: throw Refused("cannot open")).use { pfd ->
             FileInputStream(pfd.fileDescriptor).use { fin ->
                 while (true) {
                     if (stopped()) throw IOException("stopped")
                     val c = nextChunk(offset, total) ?: return
                     fin.channel.position(c.offset)
-                    val r = api.putChunk(sha, c.offset, total, l.name, l.modified, c.length, fin, onBytes)
+                    var sent = 0L
+                    val r = try {
+                        api.putChunk(sha, c.offset, total, l.name, l.modified, c.length, fin) { n ->
+                            sent += n; onPart((c.offset + sent).toFloat() / total)
+                        }.also { if (it.status >= 500) throw IOException("status ${it.status}") }  // tunnel or server hiccup
+                    } catch (e: Unauthorized) {
+                        throw e
+                    } catch (e: IOException) {
+                        // a dropped or stalled connection: wait a little and send this chunk again. The server
+                        // kept what arrived and answers with a 409 that names the offset to go on from.
+                        if (stopped() || ++drops > MAX_DROPS) throw e
+                        Thread.sleep(minOf(60_000L, 5_000L shl (drops - 1)))
+                        continue
+                    }
                     when (val step = afterChunk(r.status, r.received, c.offset, c.length, total, stalls)) {
                         Step.Done -> return
-                        is Step.Continue -> { stalls = if (step.offset == offset) stalls + 1 else 0; offset = step.offset }
-                        is Step.Fail -> throw IOException(step.reason)
+                        is Step.Continue -> {
+                            if (step.offset != offset) drops = 0
+                            stalls = if (step.offset == offset) stalls + 1 else 0; offset = step.offset
+                        }
+                        is Step.Fail -> throw Refused(step.reason)
                     }
                 }
             }
-        } ?: throw IOException("cannot open")
+        }
     }
 
-    fun run(progress: (done: Int, total: Int) -> Unit, stopped: () -> Boolean): Outcome {
+    /** [progress] gets the files done, the files to do and how far the file being sent is (0 to 1). */
+    fun run(progress: (done: Int, total: Int, part: Float) -> Unit, stopped: () -> Boolean): Outcome {
         try {
+            val refused = HashSet<Long>()
             var rounds = 0
             while (rounds++ < 5) {
                 val locals = Media.scan(cr)
                 val enabled = locals.groupBy { it.bucketId }.filter { (id, l) -> settings.folderOn(id, l.first().bucket) }.keys
-                val todo = pending(locals, enabled, store)
+                val todo = pending(locals, enabled, store).filter { it.id !in refused }
                 if (todo.isEmpty()) break
                 var done = 0
-                progress(0, todo.size)
+                progress(0, todo.size, 0f)
                 for (batch in todo.chunked(40)) {
                     if (stopped()) return Outcome.Retry
                     val hashed = ArrayList<Pair<Local, String>>()
@@ -85,7 +108,7 @@ class Engine(
                         if (sha == null) { done++; continue }  // vanished or still being written: next round
                         store.put(Seen(l.id, l.size, l.modified, sha, false, 0, l.video))
                         hashed += l to sha
-                        progress(done, todo.size)
+                        progress(done, todo.size, 0f)
                     }
                     if (hashed.isEmpty()) continue
                     val missing = api.check(hashed.map { it.second }.distinct())
@@ -95,20 +118,33 @@ class Engine(
                         if (sha !in missing) {
                             store.markOnServer(l.id, now)
                         } else {
-                            upload(l, sha, onBytes = {}, stopped = stopped)
-                            store.markOnServer(l.id, System.currentTimeMillis())
+                            val d = done
+                            try {
+                                upload(l, sha, onPart = { progress(d, todo.size, it) }, stopped = stopped)
+                                store.markOnServer(l.id, System.currentTimeMillis())
+                            } catch (_: Refused) {
+                                refused += l.id  // tried again on the next run, not again and again in this one
+                            }
                         }
                         done++
-                        progress(done, todo.size)
+                        progress(done, todo.size, 0f)
                     }
                 }
             }
+            if (refused.isNotEmpty()) return Outcome.Retry
             settings.lastBackupAt = System.currentTimeMillis()
             return Outcome.Done
         } catch (_: Unauthorized) {
             return Outcome.Unauthorized
         } catch (_: IOException) {
             return Outcome.Retry
+        } catch (_: InterruptedException) {
+            return Outcome.Retry
         }
+    }
+
+    private companion object {
+        /** Connection drops in a row on one chunk before the run gives up and WorkManager retries later. */
+        const val MAX_DROPS = 5
     }
 }

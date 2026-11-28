@@ -8,6 +8,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.io.InputStream
 import java.net.URLEncoder
+import java.util.concurrent.atomic.AtomicLong
 
 /** Server answer to one chunk. */
 data class ChunkReply(val status: Int, val received: Long?, val finished: Boolean, val duplicate: Boolean)
@@ -36,12 +37,28 @@ class Api(server: String, token: String? = null) : DeviceApi(server, token) {
         c.readTimeout = 120_000
         val buf = ByteArray(64 * 1024)
         var left = length
-        c.outputStream.use { out ->
-            while (left > 0) {
-                val n = data.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
-                if (n < 0) throw IOException("file ended early")
-                out.write(buf, 0, n); left -= n; onBytes(n.toLong())
+        // A socket write has no timeout of its own: on a connection that went silent (WLAN handover, the tunnel
+        // dropping the stream) it blocks for as long as TCP keeps trying, which can be most of an hour. The watchdog
+        // closes the connection once no byte has moved for STALL_MS, the write throws and the engine resumes.
+        val moved = AtomicLong(System.currentTimeMillis())
+        val dog = Thread {
+            try {
+                while (true) {
+                    Thread.sleep(5_000)
+                    if (System.currentTimeMillis() - moved.get() > STALL_MS) { c.disconnect(); return@Thread }
+                }
+            } catch (_: InterruptedException) { /* the body is out */ }
+        }.apply { isDaemon = true; start() }
+        try {
+            c.outputStream.use { out ->
+                while (left > 0) {
+                    val n = data.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
+                    if (n < 0) throw IOException("file ended early")
+                    out.write(buf, 0, n); left -= n; moved.set(System.currentTimeMillis()); onBytes(n.toLong())
+                }
             }
+        } finally {
+            dog.interrupt()
         }
         val status = c.responseCode
         val text = body(c)
@@ -53,5 +70,7 @@ class Api(server: String, token: String? = null) : DeviceApi(server, token) {
 
     companion object {
         const val CHUNK = CHUNK_BYTES
+        /** No byte written for this long: the connection is dead. */
+        const val STALL_MS = 60_000L
     }
 }

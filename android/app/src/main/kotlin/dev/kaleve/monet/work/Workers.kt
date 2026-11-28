@@ -18,12 +18,12 @@ class BackupWorker(private val ctx: Context, params: WorkerParameters) : Corouti
         var lastNotify = 0L
         try { setForeground(Notifications.info(ctx, 0, 0)) } catch (_: Exception) { /* not allowed from background: carry on without */ }
         val outcome = try {
-            engine.run(progress = { d, t ->
+            engine.run(progress = { d, t, part ->
                 BackupState.running.value = BackupState.Progress(d, t)
                 val now = System.currentTimeMillis()
                 if (now - lastNotify > 1500) {
                     lastNotify = now
-                    try { setForegroundAsync(Notifications.info(ctx, d, t)) } catch (_: Exception) {}
+                    try { setForegroundAsync(Notifications.info(ctx, d, t, part)) } catch (_: Exception) {}
                 }
             }, stopped = { isStopped })
         } finally {
