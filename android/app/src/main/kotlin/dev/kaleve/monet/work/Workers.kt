@@ -16,6 +16,7 @@ class BackupWorker(private val ctx: Context, params: WorkerParameters) : Corouti
         val settings = Settings(ctx)
         val engine = Engine(ctx.contentResolver, settings, SqlHashStore(ctx), Api(settings.server, token))
         var lastNotify = 0L
+        var posting: java.util.concurrent.Future<*>? = null
         try { setForeground(Notifications.info(ctx, 0, 0)) } catch (_: Exception) { /* not allowed from background: carry on without */ }
         val outcome = try {
             engine.run(progress = { d, t, part ->
@@ -23,11 +24,15 @@ class BackupWorker(private val ctx: Context, params: WorkerParameters) : Corouti
                 val now = System.currentTimeMillis()
                 if (now - lastNotify > 1500) {
                     lastNotify = now
-                    try { setForegroundAsync(Notifications.info(ctx, d, t, part)) } catch (_: Exception) {}
+                    try { posting = setForegroundAsync(Notifications.info(ctx, d, t, part)) } catch (_: Exception) {}
                 }
             }, stopped = { isStopped })
         } finally {
             BackupState.running.value = null
+            // setForegroundAsync only queues the update. One that lands after WorkManager has already taken the
+            // service down stays behind as an ongoing notification nobody removes, frozen at its count.
+            try { posting?.get(5, TimeUnit.SECONDS) } catch (_: Exception) {}
+            Notifications.clear(ctx)
         }
         return when (outcome) {
             Outcome.Done -> Result.success()

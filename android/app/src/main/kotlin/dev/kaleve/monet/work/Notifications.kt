@@ -15,6 +15,9 @@ object Notifications {
     private const val CHANNEL = "backup"
     private const val ID = 4321
 
+    /** Removes the progress notification once a run is over (WorkManager's own removal can lose a race, see BackupWorker). */
+    fun clear(context: Context) = context.getSystemService(NotificationManager::class.java).cancel(ID)
+
     /** [part] is how far the file being sent is, so the bar moves during a long video too. */
     fun info(context: Context, done: Int, total: Int, part: Float = 0f): ForegroundInfo {
         val nm = context.getSystemService(NotificationManager::class.java)
