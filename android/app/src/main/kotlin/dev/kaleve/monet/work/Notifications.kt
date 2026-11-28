@@ -15,14 +15,18 @@ object Notifications {
     private const val CHANNEL = "backup"
     private const val ID = 4321
 
-    fun info(context: Context, done: Int, total: Int): ForegroundInfo {
+    /** Removes the progress notification once a run is over (WorkManager's own removal can lose a race, see BackupWorker). */
+    fun clear(context: Context) = context.getSystemService(NotificationManager::class.java).cancel(ID)
+
+    /** [part] is how far the file being sent is, so the bar moves during a long video too. */
+    fun info(context: Context, done: Int, total: Int, part: Float = 0f): ForegroundInfo {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, context.getString(R.string.channel_name), NotificationManager.IMPORTANCE_LOW))
         val n = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat)
             .setContentTitle(context.getString(R.string.notif_title))
             .setContentText(if (total > 0) context.getString(R.string.sichert_von, done, total) else null)
-            .setProgress(total, done, total == 0)
+            .setProgress(total * 100, done * 100 + (part.coerceIn(0f, 1f) * 100).toInt(), total == 0)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
